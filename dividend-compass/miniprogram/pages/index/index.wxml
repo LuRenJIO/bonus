@@ -1,0 +1,111 @@
+<!--index.wxml 首页：搜索 / 自选 / 最近浏览-->
+<view class="page">
+
+  <!-- 搜索框 -->
+  <view class="search-bar">
+    <view class="search-icon">🔍</view>
+    <input
+      class="search-input"
+      placeholder="股票名称 / 拼音首字母 / 6位代码"
+      placeholder-class="search-ph"
+      value="{{keyword}}"
+      confirm-type="search"
+      bindinput="onSearchInput"
+    />
+    <view wx:if="{{keyword}}" class="search-clear" bindtap="onClearSearch">✕</view>
+  </view>
+
+  <!-- 搜索建议 -->
+  <block wx:if="{{keyword}}">
+    <view wx:if="{{searching}}" class="loading-box">搜索中…</view>
+    <view wx:elif="{{suggestions.length}}" class="card sug-card">
+      <view
+        class="sug-item"
+        wx:for="{{suggestions}}"
+        wx:key="code"
+        data-code="{{item.code}}"
+        data-name="{{item.name}}"
+        data-market="{{item.market}}"
+        bindtap="goStock"
+      >
+        <view class="sug-left">
+          <text class="sug-name">{{item.name}}</text>
+          <text class="tag">{{item.marketName}}</text>
+        </view>
+        <view class="sug-code num">{{item.code}}</view>
+      </view>
+    </view>
+    <view wx:elif="{{searched}}" class="empty-box">未找到相关A股</view>
+  </block>
+
+  <!-- 默认视图：自选 + 最近浏览 -->
+  <block wx:else>
+    <!-- 自选股 -->
+    <view class="card">
+      <view class="card-title">
+        <text>自选股</text>
+        <text class="sub">{{favList.length ? favList.length + ' 只' : ''}}</text>
+      </view>
+
+      <view wx:if="{{favLoading}}" class="loading-box">加载中…</view>
+
+      <view wx:elif="{{favError}}" class="empty-box">
+        <view>云端自选暂不可用</view>
+        <view class="err-detail">{{favError}}</view>
+        <view class="err-tip">请确认已部署 favorites 云函数并开通云开发</view>
+      </view>
+
+      <view wx:elif="{{!favList.length}}" class="empty-box">
+        暂无自选股，搜索股票后可在详情页添加
+      </view>
+
+      <block wx:else>
+        <view
+          class="fav-item"
+          wx:for="{{favList}}"
+          wx:key="code"
+          data-code="{{item.code}}"
+          data-name="{{item.name}}"
+          data-market="{{item.market}}"
+          bindtap="goStock"
+        >
+          <view class="fav-left">
+            <view class="fav-name">{{item.name}}</view>
+            <view class="fav-code num">{{item.market}} {{item.code}}</view>
+          </view>
+          <view class="fav-right">
+            <view class="fav-price num">{{item.price || '--'}}</view>
+            <view class="fav-chg num {{item.changePercent > 0 ? 'up' : item.changePercent < 0 ? 'down' : 'flat'}}">
+              {{item.changePercent === null || item.changePercent === undefined ? '--' : (item.changePercent > 0 ? '+' : '') + item.changePercent + '%'}}
+            </view>
+          </view>
+          <view class="fav-del" data-code="{{item.code}}" catchtap="onRemoveFavorite">✕</view>
+        </view>
+      </block>
+    </view>
+
+    <!-- 最近浏览 -->
+    <view class="card" wx:if="{{recent.length}}">
+      <view class="card-title"><text>最近浏览</text></view>
+      <view class="recent-grid">
+        <view
+          class="recent-chip"
+          wx:for="{{recent}}"
+          wx:key="code"
+          data-code="{{item.code}}"
+          data-name="{{item.name}}"
+          data-market="{{item.market}}"
+          bindtap="goStock"
+        >
+          {{item.name}}
+        </view>
+      </view>
+    </view>
+
+    <!-- 说明 -->
+    <view class="footer-tip">
+      <view>口径说明：TTM股息率 = 近12个月已实施税前分红 ÷ 最新股价</view>
+      <view>数据来源：东方财富 · 腾讯财经 ｜ 仅供研究参考，不构成投资建议</view>
+    </view>
+  </block>
+</view>

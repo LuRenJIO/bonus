@@ -1,0 +1,150 @@
+/* index.wxss —— 首页 */
+
+.page {
+  padding-bottom: 40rpx;
+  min-height: 100vh;
+}
+
+/* ---------- 搜索框 ---------- */
+.search-bar {
+  display: flex;
+  align-items: center;
+  margin: 24rpx 24rpx 8rpx;
+  padding: 0 24rpx;
+  height: 84rpx;
+  background: var(--card);
+  border-radius: 42rpx;
+  border: 1rpx solid var(--border);
+}
+
+.search-icon {
+  font-size: 28rpx;
+  margin-right: 16rpx;
+  opacity: 0.7;
+}
+
+.search-input {
+  flex: 1;
+  font-size: 28rpx;
+  color: var(--text);
+}
+
+.search-ph {
+  color: var(--text-dim);
+}
+
+.search-clear {
+  color: var(--text-dim);
+  font-size: 28rpx;
+  padding: 10rpx;
+}
+
+/* ---------- 搜索建议 ---------- */
+.sug-card { padding: 8rpx 24rpx; }
+
+.sug-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 24rpx 0;
+  border-bottom: 1rpx solid var(--border);
+}
+
+.sug-item:last-child { border-bottom: none; }
+
+.sug-left { display: flex; align-items: center; }
+
+.sug-name {
+  font-size: 30rpx;
+  font-weight: 500;
+}
+
+.sug-code {
+  font-size: 26rpx;
+  color: var(--text-sub);
+  letter-spacing: 2rpx;
+}
+
+/* ---------- 自选股 ---------- */
+.fav-item {
+  display: flex;
+  align-items: center;
+  padding: 22rpx 0;
+  border-bottom: 1rpx solid var(--border);
+}
+
+.fav-item:last-child { border-bottom: none; }
+
+.fav-left { flex: 1; }
+
+.fav-name {
+  font-size: 30rpx;
+  font-weight: 500;
+}
+
+.fav-code {
+  font-size: 22rpx;
+  color: var(--text-dim);
+  margin-top: 4rpx;
+}
+
+.fav-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  margin-right: 20rpx;
+}
+
+.fav-price {
+  font-size: 30rpx;
+  font-weight: 600;
+}
+
+.fav-chg {
+  font-size: 22rpx;
+  margin-top: 4rpx;
+}
+
+.fav-del {
+  color: var(--text-dim);
+  font-size: 26rpx;
+  padding: 16rpx 8rpx 16rpx 16rpx;
+}
+
+.err-detail {
+  color: var(--up);
+  font-size: 22rpx;
+  margin-top: 12rpx;
+  max-width: 600rpx;
+  word-break: break-all;
+}
+
+.err-tip {
+  color: var(--text-dim);
+  font-size: 22rpx;
+  margin-top: 8rpx;
+}
+
+/* ---------- 最近浏览 ---------- */
+.recent-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16rpx;
+}
+
+.recent-chip {
+  padding: 12rpx 28rpx;
+  background: var(--card-hover);
+  border-radius: 32rpx;
+  font-size: 26rpx;
+  color: var(--text-sub);
+}
+
+/* ---------- 页脚 ---------- */
+.footer-tip {
+  text-align: center;
+  color: var(--text-dim);
+  font-size: 20rpx;
+  line-height: 1.8;
+  padding: 30rpx 40rpx;
+}

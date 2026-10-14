@@ -1,0 +1,6 @@
+{
+  "name": "stock-service",
+  "version": "1.0.0",
+  "description": "红利股息宝核心数据服务（零外部依赖，直接上传部署即可）",
+  "main": "index.js"
+}

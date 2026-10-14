@@ -1,0 +1,125 @@
+/**app.wxss —— 全局样式：券商专业风（深色底 / 红涨绿跌 / 高数据密度）**/
+
+page {
+  --bg: #0e1116;            /* 页面背景 */
+  --bg-deep: #090b0f;       /* 更深背景 */
+  --card: #161b22;          /* 卡片背景 */
+  --card-hover: #1c232d;
+  --border: #232a35;        /* 分割线 */
+  --text: #e6edf3;          /* 主文字 */
+  --text-sub: #8b949e;      /* 次要文字 */
+  --text-dim: #59626d;      /* 弱化文字 */
+  --up: #f04b5a;            /* 涨（红） */
+  --up-bg: rgba(240, 75, 90, 0.12);
+  --down: #00b578;          /* 跌（绿） */
+  --down-bg: rgba(0, 181, 120, 0.12);
+  --gold: #d4a94e;          /* 红利金 */
+  --gold-bg: rgba(212, 169, 78, 0.12);
+  --blue: #4c8dff;
+
+  background: var(--bg);
+  color: var(--text);
+  font-size: 28rpx;
+  font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', 'PingFang SC',
+    'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+}
+
+/* ---------- 通用卡片 ---------- */
+.card {
+  background: var(--card);
+  border-radius: 16rpx;
+  padding: 24rpx;
+  margin: 20rpx 24rpx;
+}
+
+.card-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 30rpx;
+  font-weight: 600;
+  margin-bottom: 20rpx;
+}
+
+.card-title .sub {
+  font-size: 22rpx;
+  font-weight: 400;
+  color: var(--text-sub);
+}
+
+/* ---------- 涨跌色 ---------- */
+.up { color: var(--up); }
+.down { color: var(--down); }
+.flat { color: var(--text-sub); }
+
+/* ---------- 数字等宽 ---------- */
+.num {
+  font-family: 'DIN Alternate', 'Menlo', monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- 标签 ---------- */
+.tag {
+  display: inline-block;
+  font-size: 20rpx;
+  padding: 2rpx 12rpx;
+  border-radius: 6rpx;
+  background: var(--card-hover);
+  color: var(--text-sub);
+  margin-left: 12rpx;
+  vertical-align: middle;
+}
+.tag-gold { background: var(--gold-bg); color: var(--gold); }
+.tag-blue { background: rgba(76, 141, 255, 0.14); color: var(--blue); }
+
+/* ---------- 状态灯 ---------- */
+.dot {
+  display: inline-block;
+  width: 14rpx;
+  height: 14rpx;
+  border-radius: 50%;
+  margin-right: 12rpx;
+  flex-shrink: 0;
+}
+.dot-good { background: #00b578; box-shadow: 0 0 8rpx rgba(0, 181, 120, 0.6); }
+.dot-warn { background: #d4a94e; box-shadow: 0 0 8rpx rgba(212, 169, 78, 0.6); }
+.dot-bad { background: #f04b5a; box-shadow: 0 0 8rpx rgba(240, 75, 90, 0.6); }
+
+/* ---------- 表格 ---------- */
+.table { width: 100%; }
+.table-row {
+  display: flex;
+  align-items: center;
+  padding: 16rpx 0;
+  border-bottom: 1rpx solid var(--border);
+  font-size: 24rpx;
+}
+.table-row:last-child { border-bottom: none; }
+.table-head {
+  color: var(--text-dim);
+  font-size: 22rpx;
+}
+
+/* ---------- 加载与空状态 ---------- */
+.loading-box {
+  padding: 60rpx 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  color: var(--text-sub);
+  font-size: 24rpx;
+}
+.empty-box {
+  padding: 80rpx 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  color: var(--text-dim);
+  font-size: 24rpx;
+}
+
+button {
+  background: var(--card-hover);
+  color: var(--text);
+}
+button::after { border: none; }

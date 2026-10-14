@@ -1,0 +1,48 @@
+// format.wxs —— WXML 内联格式化（WXS 语法，ES5）
+var ok = function (v) {
+  if (v === null || v === undefined) return false;
+  if (typeof v !== 'number') return false;
+  return !isNaN(v);
+};
+
+var fmtYi = function (v, d) {
+  if (!ok(v)) return '--';
+  if (d === undefined) d = 2;
+  return (v / 1e8).toFixed(d) + '亿';
+};
+
+var fmtNum = function (v, d) {
+  if (!ok(v)) return '--';
+  if (d === undefined) d = 2;
+  return v.toFixed(d);
+};
+
+var signed = function (v, d) {
+  if (!ok(v)) return '--';
+  if (d === undefined) d = 2;
+  return (v > 0 ? '+' : '') + v.toFixed(d);
+};
+
+var cls = function (v) {
+  if (!ok(v) || v === 0) return 'flat';
+  return v > 0 ? 'up' : 'down';
+};
+
+var pct = function (v) {
+  if (!ok(v)) return '--';
+  return v + '%';
+};
+
+var year = function (dateStr) {
+  if (!dateStr) return '--';
+  return dateStr.slice(0, 4);
+};
+
+module.exports = {
+  fmtYi: fmtYi,
+  fmtNum: fmtNum,
+  signed: signed,
+  cls: cls,
+  pct: pct,
+  year: year,
+};

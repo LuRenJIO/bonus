@@ -1,0 +1,9 @@
+{
+  "name": "favorites",
+  "version": "1.0.0",
+  "description": "自选股收藏服务（云数据库）",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "~2.6.3"
+  }
+}

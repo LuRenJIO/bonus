@@ -1,0 +1,308 @@
+<!--stock.wxml 股票详情-->
+<wxs src="./format.wxs" module="fmt" />
+
+<view class="page">
+
+  <!-- 加载中 -->
+  <view wx:if="{{loading}}" class="loading-box">
+    <view class="loading-text">正在获取 {{name || code}} 的行情、财报与分红数据…</view>
+    <view class="loading-sub">东财财报 · 腾讯行情</view>
+  </view>
+
+  <!-- 错误 -->
+  <view wx:elif="{{error}}" class="empty-box">
+    <view class="err-main">加载失败</view>
+    <view class="err-msg">{{error}}</view>
+    <button class="retry-btn" bindtap="onRetry">重试</button>
+  </view>
+
+  <!-- 数据主体 -->
+  <block wx:elif="{{d}}">
+
+    <!-- ============ 行情头 ============ -->
+    <view class="card quote-card">
+      <view class="quote-top">
+        <view class="quote-left">
+          <view class="q-name-row">
+            <text class="q-name">{{d.name}}</text>
+            <text class="tag tag-blue">{{d.market}}</text>
+            <text class="tag">{{d.quote.source === 'tencent' ? '腾讯' : d.quote.source === 'sina' ? '新浪' : '东财'}}</text>
+          </view>
+          <view class="q-code num">{{d.code}}</view>
+        </view>
+        <view class="quote-right">
+          <view class="q-price num {{fmt.cls(d.quote.change)}}">{{d.quote.price}}</view>
+          <view class="q-chg num {{fmt.cls(d.quote.change)}}">
+            {{fmt.signed(d.quote.change)}}  {{fmt.signed(d.quote.changePercent)}}%
+          </view>
+        </view>
+      </view>
+      <view class="quote-grid">
+        <view class="qg-item"><text class="qg-label">今开</text><text class="qg-val num">{{fmt.fmtNum(d.quote.open)}}</text></view>
+        <view class="qg-item"><text class="qg-label">昨收</text><text class="qg-val num">{{fmt.fmtNum(d.quote.prevClose)}}</text></view>
+        <view class="qg-item"><text class="qg-label">最高</text><text class="qg-val num up">{{fmt.fmtNum(d.quote.high)}}</text></view>
+        <view class="qg-item"><text class="qg-label">最低</text><text class="qg-val num down">{{fmt.fmtNum(d.quote.low)}}</text></view>
+        <view class="qg-item"><text class="qg-label">换手</text><text class="qg-val num">{{fmt.fmtNum(d.quote.turnoverRate)}}%</text></view>
+        <view class="qg-item"><text class="qg-label">PE(TTM)</text><text class="qg-val num">{{fmt.fmtNum(d.quote.peTTM)}}</text></view>
+        <view class="qg-item"><text class="qg-label">PB</text><text class="qg-val num">{{fmt.fmtNum(d.quote.pb)}}</text></view>
+        <view class="qg-item"><text class="qg-label">总市值</text><text class="qg-val num">{{fmt.fmtYi(d.quote.totalMarketCap, 0)}}</text></view>
+      </view>
+    </view>
+
+    <!-- ============ 股息率核心卡 ============ -->
+    <view class="card yield-card">
+      <view class="card-title">
+        <text>股息率（TTM口径）</text>
+        <text class="sub">近12个月已实施分红 ÷ 现价</text>
+      </view>
+      <view class="yield-main">
+        <view class="yield-left">
+          <view class="yield-big num">{{d.dividend.ttm.yield === null ? '--' : d.dividend.ttm.yield + '%'}}</view>
+          <view class="yield-sub">TTM每股分红 {{fmt.fmtNum(d.dividend.ttm.perShare, 4)}} 元</view>
+        </view>
+        <view class="yield-right" wx:if="{{d.dividend.annual.length}}">
+          <view class="yr-item">
+            <text class="yr-label">{{d.dividend.annual[d.dividend.annual.length-1].year}}年度</text>
+            <text class="yr-val num">{{d.dividend.annual[d.dividend.annual.length-1].yieldNow === null ? '--' : d.dividend.annual[d.dividend.annual.length-1].yieldNow + '%'}}</text>
+          </view>
+        </view>
+      </view>
+
+      <!-- TTM 分红明细 -->
+      <view wx:if="{{d.dividend.ttm.detail.length}}" class="ttm-detail">
+        <view class="ttm-row" wx:for="{{d.dividend.ttm.detail}}" wx:key="exDate">
+          <text class="ttm-date num">{{item.exDate}} 除息</text>
+          <text class="ttm-plan">{{item.profile}}</text>
+        </view>
+      </view>
+
+      <!-- 待实施分红 -->
+      <view wx:if="{{d.dividend.pending.length}}" class="pending-box">
+        <view class="pending-title">已公告待实施</view>
+        <view class="pending-row" wx:for="{{d.dividend.pending}}" wx:key="planNoticeDate">
+          <text class="pending-plan">{{item.profile || '分红方案'}}</text>
+          <text class="pending-status">{{item.progress}}</text>
+        </view>
+      </view>
+
+      <view wx:if="{{!d.dividend.ttm.detail.length && !d.dividend.pending.length}}" class="no-div-tip">
+        近12个月无已实施现金分红
+      </view>
+    </view>
+
+    <!-- ============ 预测卡 ============ -->
+    <view class="card pred-card" wx:if="{{d.prediction.hasEnoughData}}">
+      <view class="card-title">
+        <text>{{d.prediction.nextPeriod}}预期分红</text>
+        <view class="pred-tabs">
+          <view class="pred-tab {{predMode === 'basic' ? 'active' : ''}}" data-mode="basic" bindtap="onSwitchPredMode">双模型区间</view>
+          <view class="pred-tab {{predMode === 'enhanced' ? 'active' : ''}}" data-mode="enhanced" bindtap="onSwitchPredMode">盈利修正</view>
+        </view>
+      </view>
+
+      <!-- 三档区间 -->
+      <block wx:if="{{predMode === 'basic'}}">
+        <view class="range-row">
+          <view class="range-col">
+            <view class="rc-label">保守</view>
+            <view class="rc-div num">{{fmt.fmtNum(d.prediction.basic.range.conservative, 3)}}元</view>
+            <view class="rc-yield num">{{d.prediction.basic.yields.conservative}}%</view>
+          </view>
+          <view class="range-col main-col">
+            <view class="rc-label">中性</view>
+            <view class="rc-div num gold-text">{{fmt.fmtNum(d.prediction.basic.range.neutral, 3)}}元</view>
+            <view class="rc-yield num gold-text">{{d.prediction.basic.yields.neutral}}%</view>
+          </view>
+          <view class="range-col">
+            <view class="rc-label">乐观</view>
+            <view class="rc-div num">{{fmt.fmtNum(d.prediction.basic.range.optimistic, 3)}}元</view>
+            <view class="rc-yield num">{{d.prediction.basic.yields.optimistic}}%</view>
+          </view>
+        </view>
+
+        <!-- 模型明细 -->
+        <view class="model-box">
+          <view class="model-row">
+            <text class="model-name">模型A 分红趋势</text>
+            <text class="model-val num">{{fmt.fmtNum(d.prediction.basic.modelA.value, 3)}}元</text>
+          </view>
+          <view class="model-note">近几个分红年度CAGR {{fmt.signed(d.prediction.basic.modelA.divGrowth, 1)}}%（限幅后 {{fmt.signed(d.prediction.basic.modelA.clampedGrowth, 1)}}%），{{d.prediction.basic.modelA.desc}}</view>
+          <view class="model-row" wx:if="{{d.prediction.basic.modelB}}">
+            <text class="model-name">模型B 派息率×净利</text>
+            <text class="model-val num">{{fmt.fmtNum(d.prediction.basic.modelB.value, 3)}}元</text>
+          </view>
+          <view class="model-note" wx:if="{{d.prediction.basic.modelB}}">近3年均值派息率 {{fmt.fmtNum(d.prediction.basic.modelB.payoutRatio, 1)}}% × 预测净利润（增速 {{fmt.signed(d.prediction.basic.modelB.profitGrowth, 1)}}%）</view>
+        </view>
+      </block>
+
+      <block wx:else>
+        <view class="range-row">
+          <view class="range-col">
+            <view class="rc-label">保守</view>
+            <view class="rc-div num">{{fmt.fmtNum(d.prediction.enhanced.range.conservative, 3)}}元</view>
+            <view class="rc-yield num">{{d.prediction.enhanced.yields.conservative}}%</view>
+          </view>
+          <view class="range-col main-col">
+            <view class="rc-label">中性</view>
+            <view class="rc-div num gold-text">{{fmt.fmtNum(d.prediction.enhanced.range.neutral, 3)}}元</view>
+            <view class="rc-yield num gold-text">{{d.prediction.enhanced.yields.neutral}}%</view>
+          </view>
+          <view class="range-col">
+            <view class="rc-label">乐观</view>
+            <view class="rc-div num">{{fmt.fmtNum(d.prediction.enhanced.range.optimistic, 3)}}元</view>
+            <view class="rc-yield num">{{d.prediction.enhanced.yields.optimistic}}%</view>
+          </view>
+        </view>
+
+        <!-- 信心度 + 因子 -->
+        <view class="conf-row">
+          <text class="conf-label">预测信心度</text>
+          <view class="conf-bar">
+            <view class="conf-fill" style="width: {{d.prediction.enhanced.confidence}}%"></view>
+          </view>
+          <text class="conf-val num">{{d.prediction.enhanced.confidence}}/100</text>
+        </view>
+        <view class="factor-list">
+          <view class="factor-item" wx:for="{{d.prediction.enhanced.factors}}" wx:key="name">
+            <view class="fi-head">
+              <text class="fi-name">{{item.name}}</text>
+              <text class="fi-effect {{item.effect === '+' ? 'up' : item.effect === '-' ? 'down' : 'flat'}}">{{item.effect === '+' ? '上调' : item.effect === '-' ? '下调' : '持平'}}</text>
+            </view>
+            <view class="fi-value num">{{item.value}}</view>
+            <view class="fi-note">{{item.detail}}</view>
+          </view>
+        </view>
+      </block>
+
+      <view class="pred-note">预测基于公开历史数据推算，仅供参考，实际分红以公司公告为准</view>
+    </view>
+
+    <!-- 无预测数据 -->
+    <view class="card" wx:else>
+      <view class="card-title"><text>预期分红</text></view>
+      <view class="no-div-tip">
+        <block wx:if="{{d.prediction.notes.length}}">{{d.prediction.notes[0]}}</block>
+        <block wx:else>历史分红数据不足，暂无法预测</block>
+      </view>
+    </view>
+
+    <!-- ============ 分红历史 ============ -->
+    <view class="card" wx:if="{{d.dividend.annual.length}}">
+      <view class="card-title">
+        <text>历年分红</text>
+        <text class="sub">按分红年度归属（税前）</text>
+      </view>
+      <view class="table-row table-head">
+        <text class="c-year">年度</text>
+        <text class="c-div">每股分红</text>
+        <text class="c-times">次数</text>
+        <text class="c-pr">派息率</text>
+        <text class="c-yield">现价股息率</text>
+      </view>
+      <view class="table-row" wx:for="{{d.dividend.annual}}" wx:key="year">
+        <text class="c-year num">{{item.year}}</text>
+        <text class="c-div num">{{fmt.fmtNum(item.perShare, 4)}}</text>
+        <text class="c-times num">{{item.times}}</text>
+        <text class="c-pr num {{item.payoutRatio > 100 ? 'up' : ''}}">{{item.payoutRatio === null ? '--' : fmt.fmtNum(item.payoutRatio, 1) + '%'}}</text>
+        <text class="c-yield num">{{item.yieldNow === null ? '--' : item.yieldNow + '%'}}</text>
+      </view>
+    </view>
+
+    <!-- ============ 财务表现 ============ -->
+    <view class="card" wx:if="{{d.finance.latest}}">
+      <view class="card-title">
+        <text>财务表现</text>
+        <text class="sub">来源：定期报告（东财F10）</text>
+      </view>
+
+      <!-- 最新报告期 -->
+      <view class="latest-report">
+        <view class="lr-title">{{d.finance.latest.reportType || d.finance.latest.reportDate}}</view>
+        <view class="lr-grid">
+          <view class="lrg-item">
+            <text class="lrg-label">营收</text>
+            <text class="lrg-val num">{{fmt.fmtYi(d.finance.latest.revenue, 1)}}</text>
+            <text class="lrg-sub num {{fmt.cls(d.finance.latest.revenueYoy)}}">{{fmt.signed(d.finance.latest.revenueYoy, 1)}}%</text>
+          </view>
+          <view class="lrg-item">
+            <text class="lrg-label">归母净利</text>
+            <text class="lrg-val num">{{fmt.fmtYi(d.finance.latest.parentNetProfit, 1)}}</text>
+            <text class="lrg-sub num {{fmt.cls(d.finance.latest.netProfitYoy)}}">{{fmt.signed(d.finance.latest.netProfitYoy, 1)}}%</text>
+          </view>
+          <view class="lrg-item">
+            <text class="lrg-label">ROE</text>
+            <text class="lrg-val num">{{fmt.fmtNum(d.finance.latest.roeWeighted, 2)}}%</text>
+            <text class="lrg-sub">加权</text>
+          </view>
+          <view class="lrg-item">
+            <text class="lrg-label">每股未分配</text>
+            <text class="lrg-val num">{{fmt.fmtNum(d.finance.latest.perUnassignProfit, 2)}}元</text>
+            <text class="lrg-sub">利润</text>
+          </view>
+        </view>
+      </view>
+
+      <!-- 年度表 -->
+      <view class="table-row table-head">
+        <text class="f-year">年份</text>
+        <text class="f-rev">营收</text>
+        <text class="f-g">增速</text>
+        <text class="f-np">归母净利</text>
+        <text class="f-g2">增速</text>
+        <text class="f-roe">ROE</text>
+      </view>
+      <view class="table-row" wx:for="{{d.finance.annual}}" wx:key="reportDate">
+        <text class="f-year num">{{fmt.year(item.reportDate)}}</text>
+        <text class="f-rev num">{{fmt.fmtYi(item.revenue, 0)}}</text>
+        <text class="f-g num {{fmt.cls(item.revenueYoy)}}">{{fmt.signed(item.revenueYoy, 1)}}</text>
+        <text class="f-np num">{{fmt.fmtYi(item.parentNetProfit, 0)}}</text>
+        <text class="f-g2 num {{fmt.cls(item.netProfitYoy)}}">{{fmt.signed(item.netProfitYoy, 1)}}</text>
+        <text class="f-roe num">{{fmt.fmtNum(item.roeWeighted, 1)}}</text>
+      </view>
+    </view>
+
+    <!-- ============ 分红可持续性体检 ============ -->
+    <view class="card health-card" wx:if="{{d.health}}">
+      <view class="card-title">
+        <text>分红可持续性体检</text>
+        <text class="sub">6维度评估</text>
+      </view>
+      <view class="health-head">
+        <view class="hh-score num {{d.health.grade === 'A' ? 'grade-a' : d.health.grade === 'B' ? 'grade-b' : d.health.grade === 'C' ? 'grade-c' : 'grade-d'}}">{{d.health.score}}</view>
+        <view class="hh-info">
+          <view class="hh-grade">{{d.health.grade}} · {{d.health.label}}</view>
+          <view class="hh-note">综合评分越高，当前分红水平的可持续性越强</view>
+        </view>
+      </view>
+      <view class="health-items">
+        <view class="health-item" wx:for="{{d.health.items}}" wx:key="name">
+          <view class="hi-top">
+            <view class="dot dot-{{item.status}}"></view>
+            <text class="hi-name">{{item.name}}</text>
+            <text class="hi-value num">{{item.value}}</text>
+          </view>
+          <view class="hi-note">{{item.note}}</view>
+        </view>
+      </view>
+    </view>
+
+    <!-- 页脚 -->
+    <view class="footer-tip">
+      <view>数据来源：东方财富 · 腾讯财经｜分红为税前口径</view>
+      <view>本工具仅供研究参考，不构成投资建议</view>
+    </view>
+
+    <!-- 底部占位（避免被操作栏遮挡） -->
+    <view class="bottom-holder"></view>
+  </block>
+</view>
+
+<!-- 底部操作栏 -->
+<view class="action-bar" wx:if="{{d && !loading && !error}}">
+  <view class="ab-fav {{isFav ? 'is-fav' : ''}}" bindtap="onToggleFav">
+    <text>{{isFav ? '★ 已自选' : '☆ 加入自选'}}</text>
+  </view>
+  <view class="ab-refresh" bindtap="onRetry">
+    <text>↻ 刷新</text>
+  </view>
+</view>

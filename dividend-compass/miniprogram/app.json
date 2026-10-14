@@ -1,0 +1,16 @@
+{
+  "pages": [
+    "pages/index/index",
+    "pages/stock/stock"
+  ],
+  "window": {
+    "navigationBarBackgroundColor": "#0e1116",
+    "navigationBarTextStyle": "white",
+    "navigationBarTitleText": "红利股息宝",
+    "backgroundColor": "#0e1116",
+    "backgroundTextStyle": "dark"
+  },
+  "style": "v2",
+  "sitemapLocation": "sitemap.json",
+  "lazyCodeLoading": "requiredComponents"
+}

@@ -1,0 +1,7 @@
+{
+  "desc": "红利股息宝",
+  "rules": [{
+    "action": "allow",
+    "page": "*"
+  }]
+}
