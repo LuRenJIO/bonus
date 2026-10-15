@@ -42,6 +42,10 @@
 .ps-val { font-size: 30rpx; font-weight: 700; }
 .ps-label { font-size: 20rpx; color: var(--text-dim); margin-top: 6rpx; }
 
+/* 标题按钮组 */
+.pf-title-btns { display: flex; gap: 24rpx; }
+.pf-link { font-size: 24rpx; color: #e8b95f; }
+
 /* 持仓行 */
 .pf-row {
   display: flex;

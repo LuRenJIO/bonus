@@ -489,7 +489,99 @@ async function getIndexMinute(code, market) {
   return { preClose, points: minuteRes };
 }
 
-/* ---------------- 7. 分红送配历史（东财 datacenter） ---------------- */
+/* ---------------- 8. 全市场估值快照（东财 datacenter 估值分析报表） ---------------- */
+
+/** 最新交易日的全市场估值快照：[{code, name, price, peTTM, pb, board, marketCap}] */
+async function getValuationSnapshot() {
+  // 先取单股最新 TRADE_DATE（避免硬编码日期在非交易日取不到数据）
+  const probe = await getJSON(
+    'https://datacenter-web.eastmoney.com/api/data/v1/get?reportName=RPT_VALUEANALYSIS_DET' +
+    '&columns=TRADE_DATE&filter=' + encodeURIComponent('(SECURITY_CODE="600519")') +
+    '&pageSize=1&sortColumns=TRADE_DATE&sortTypes=-1',
+    { Referer: 'https://data.eastmoney.com/' }
+  );
+  const probeRows = (probe && probe.result && probe.result.data) || [];
+  const tradeDate = probeRows.length ? String(probeRows[0].TRADE_DATE).slice(0, 10) : null;
+  if (!tradeDate) return null;
+
+  // 第一页拿总数，然后并行抓全部页
+  const pageOf = (pn) => getJSON(
+    'https://datacenter-web.eastmoney.com/api/data/v1/get?reportName=RPT_VALUEANALYSIS_DET' +
+    '&columns=SECURITY_CODE,SECURITY_NAME_ABBR,CLOSE_PRICE,PE_TTM,PB_MRQ,BOARD_NAME,TOTAL_MARKET_CAP' +
+    '&filter=' + encodeURIComponent("(TRADE_DATE='" + tradeDate + "')") +
+    '&pageSize=500&pageNumber=' + pn + '&sortColumns=SECURITY_CODE&sortTypes=1',
+    { Referer: 'https://data.eastmoney.com/' }
+  ).catch(() => null);
+
+  const first = await pageOf(1);
+  const pages = (first && first.result && first.result.pages) || 0;
+  if (!first || !first.result || !first.result.data || !first.result.data.length) return null;
+  const results = [first];
+  const others = [];
+  for (let pn = 2; pn <= pages && pn <= 14; pn++) others.push(pageOf(pn));
+  const settled = await Promise.all(others);
+  settled.forEach((r) => { if (r && r.result && r.result.data) results.push(r); });
+
+  const seen = {};
+  const out = [];
+  results.forEach((r) => {
+    (r.result.data || []).forEach((row) => {
+      const code = row.SECURITY_CODE;
+      const price = parseFloat(row.CLOSE_PRICE);
+      if (seen[code] || !/^\d{6}$/.test(code) || !isFinite(price) || price <= 0) return;
+      seen[code] = true;
+      out.push({
+        code,
+        name: row.SECURITY_NAME_ABBR || code,
+        price,
+        peTTM: isFinite(parseFloat(row.PE_TTM)) ? +parseFloat(row.PE_TTM).toFixed(2) : null,
+        pb: isFinite(parseFloat(row.PB_MRQ)) ? +parseFloat(row.PB_MRQ).toFixed(2) : null,
+        board: row.BOARD_NAME || '',
+        marketCap: parseFloat(row.TOTAL_MARKET_CAP) || null,
+      });
+    });
+  });
+  return out.length >= 100 ? out : null;
+}
+
+/* ---------------- 9. 全市场分红事件（近 N 天，分页并行） ---------------- */
+
+/** 近 days 天内除息的全市场分红事件：[{code, name, perShare, exDate}] */
+async function getMarketDividendEvents(days) {
+  const fmt = (dt) => dt.getFullYear() + '-' + String(dt.getMonth() + 1).padStart(2, '0') + '-' + String(dt.getDate()).padStart(2, '0');
+  const start = fmt(new Date(Date.now() - days * 24 * 3600 * 1000));
+  const end = fmt(new Date());
+  const filter = "(EX_DIVIDEND_DATE>='" + start + "')(EX_DIVIDEND_DATE<='" + end + "')";
+  const pageOf = (pn) => getJSON(
+    'https://datacenter-web.eastmoney.com/api/data/v1/get?reportName=RPT_SHAREBONUS_DET' +
+    '&columns=SECURITY_CODE,SECURITY_NAME_ABBR,PRETAX_BONUS_RMB,EX_DIVIDEND_DATE&filter=' + encodeURIComponent(filter) +
+    '&pageSize=500&pageNumber=' + pn + '&sortColumns=EX_DIVIDEND_DATE&sortTypes=1',
+    { Referer: 'https://data.eastmoney.com/' }
+  ).catch(() => null);
+
+  const first = await pageOf(1);
+  const pages = (first && first.result && first.result.pages) || 0;
+  if (!first || !first.result || !first.result.data) return [];
+  const others = [];
+  for (let pn = 2; pn <= pages && pn <= 15; pn++) others.push(pageOf(pn));
+  const settled = await Promise.all(others);
+  const out = [];
+  [first].concat(settled).forEach((r) => {
+    (r && r.result && r.result.data || []).forEach((row) => {
+      const per10 = parseFloat(row.PRETAX_BONUS_RMB);
+      if (!(per10 > 0)) return;
+      out.push({
+        code: row.SECURITY_CODE,
+        name: row.SECURITY_NAME_ABBR || row.SECURITY_CODE,
+        perShare: +(per10 / 10).toFixed(4),
+        exDate: String(row.EX_DIVIDEND_DATE || '').slice(0, 10),
+      });
+    });
+  });
+  return out;
+}
+
+/* ---------------- 10. 分红送配历史（东财 datacenter） ---------------- */
 
 async function getDividendHistory(code) {
   const url = 'https://datacenter-web.eastmoney.com/api/data/v1/get?reportName=RPT_SHAREBONUS_DET' +
@@ -553,6 +645,8 @@ module.exports = {
   getDailyCloses: withRetry(getDailyCloses, 1),
   getIndexMinute: withRetry(getIndexMinute, 1),
   getExDividendCalendar: withRetry(getExDividendCalendar, 1),
+  getValuationSnapshot: withRetry(getValuationSnapshot, 1),
+  getMarketDividendEvents: withRetry(getMarketDividendEvents, 1),
   getDividendHistory: withRetry(getDividendHistory, 2),
   buildSecid,
 };

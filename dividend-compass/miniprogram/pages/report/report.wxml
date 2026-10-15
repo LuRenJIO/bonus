@@ -1,0 +1,53 @@
+<!--report.wxml 年度收息报告-->
+<view class="page">
+  <view wx:if="{{loading}}" class="loading-box">生成中…</view>
+
+  <view wx:elif="{{error}}" class="empty-box">{{error}}</view>
+
+  <view wx:elif="{{empty}}" class="empty-box">
+    <view>暂无收息记录</view>
+    <view class="empty-sub">先在「收息记账」里录入持仓，分红到账后这里会自动统计</view>
+    <view class="go-btn" bindtap="goPortfolio">去添加持仓</view>
+  </view>
+
+  <block wx:else>
+    <!-- 报告卡 -->
+    <view class="card rp-hero">
+      <view class="rp-year">{{r.year}} 年度收息报告</view>
+      <view class="rp-label">今年已收分红（税前）</view>
+      <view class="rp-total num">{{r.total}}<text class="rp-unit">元</text></view>
+      <view class="rp-facts">覆盖 {{r.monthsActive}} 个月 · 持仓 {{r.holdingCount}} 只<block wx:if="{{r.topStock}}"> · 冠军 {{r.topStock.name}}（{{r.topStock.amount}}元）</block></view>
+    </view>
+
+    <!-- 月度分布 -->
+    <view class="card">
+      <view class="card-title"><text>月度分布</text><text class="sub">按除息日归属</text></view>
+      <view class="bar-chart">
+        <view class="bar-col" wx:for="{{months}}" wx:key="label">
+          <text class="bar-val num" wx:if="{{item.val > 0}}">{{item.val >= 10000 ? (item.val / 10000).toFixed(1) + '万' : Math.round(item.val)}}</text>
+          <view class="bar" style="height: {{item.h}}rpx"></view>
+          <text class="bar-label">{{item.label}}</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 个股明细 -->
+    <view class="card">
+      <view class="card-title"><text>个股收息明细</text></view>
+      <view class="rp-row" wx:for="{{r.stocks}}" wx:key="code"
+            data-code="{{item.code}}" data-name="{{item.name}}" bindtap="goStock">
+        <text class="rp-name">{{item.name}}</text>
+        <text class="rp-amt num">{{item.amount}} 元</text>
+      </view>
+    </view>
+
+    <!-- 分享图 -->
+    <view class="card">
+      <view class="card-title"><text>收息人分享卡</text></view>
+      <view class="share-btn" bindtap="onSaveCard">{{saving ? '生成中…' : '生成并分享收息卡'}}</view>
+      <view class="cv-note">生成带月份分布的分享图，可发送好友或保存相册，晒出你的收息成绩</view>
+      <!-- 离屏绘制画布 -->
+      <canvas type="2d" id="reportCanvas" class="rp-canvas"></canvas>
+    </view>
+  </block>
+</view>

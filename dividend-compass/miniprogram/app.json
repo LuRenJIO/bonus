@@ -4,7 +4,10 @@
     "pages/stock/stock",
     "pages/calendar/calendar",
     "pages/portfolio/portfolio",
-    "pages/indexchart/indexchart"
+    "pages/indexchart/indexchart",
+    "pages/screener/screener",
+    "pages/report/report",
+    "pages/reinvest/reinvest"
   ],
   "window": {
     "navigationBarBackgroundColor": "#0e1116",

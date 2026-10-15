@@ -123,6 +123,10 @@ Page({
     wx.navigateTo({ url: '/pages/portfolio/portfolio' });
   },
 
+  goScreener() {
+    wx.navigateTo({ url: '/pages/screener/screener' });
+  },
+
   /* ---------- 红利速览 ---------- */
   async loadBrief() {
     try {

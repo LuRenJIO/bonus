@@ -136,6 +136,10 @@ Page({
     });
   },
 
+  goReport() {
+    wx.navigateTo({ url: '/pages/report/report' });
+  },
+
   onRetry() {
     this.loadPortfolio();
   },

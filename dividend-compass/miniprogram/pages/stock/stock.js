@@ -102,6 +102,14 @@ Page({
     });
   },
 
+  /* ---------- 跳转：分红再投模拟 ---------- */
+  goReinvest() {
+    wx.navigateTo({
+      url: '/pages/reinvest/reinvest?code=' + this.data.code + '&name=' +
+        encodeURIComponent(this.data.name) + '&market=' + this.data.market,
+    });
+  },
+
   /* ---------- 股息率提醒（阈值 + 订阅消息推送） ---------- */
   async loadAlert() {
     try {

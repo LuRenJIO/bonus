@@ -51,7 +51,10 @@
     <view class="card">
       <view class="card-title">
         <text>持仓明细</text>
-        <text class="sub" bindtap="onToggleForm">+ 添加</text>
+        <view class="pf-title-btns">
+          <text class="pf-link" bindtap="goReport">年度报告</text>
+          <text class="pf-link" bindtap="onToggleForm">+ 添加</text>
+        </view>
       </view>
       <view class="pf-row" wx:for="{{holdings}}" wx:key="code"
             data-code="{{item.code}}" data-name="{{item.name}}" data-market="{{item.market}}" bindtap="goStock">

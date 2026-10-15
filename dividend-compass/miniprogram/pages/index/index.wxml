@@ -83,7 +83,7 @@
         <text class="q-icon">📅</text>
         <view class="q-text">
           <view class="q-title">分红日历</view>
-          <view class="q-sub">除息日程 · 分红预案</view>
+          <view class="q-sub">除息 · 预案</view>
         </view>
       </view>
       <view class="q-divider"></view>
@@ -91,7 +91,15 @@
         <text class="q-icon">💰</text>
         <view class="q-text">
           <view class="q-title">收息记账</view>
-          <view class="q-sub">持仓分红 · 今年已收</view>
+          <view class="q-sub">持仓 · 年报</view>
+        </view>
+      </view>
+      <view class="q-divider"></view>
+      <view class="q-item" bindtap="goScreener">
+        <text class="q-icon">🔍</text>
+        <view class="q-text">
+          <view class="q-title">红利筛选</view>
+          <view class="q-sub">股息率 · 利差</view>
         </view>
       </view>
     </view>

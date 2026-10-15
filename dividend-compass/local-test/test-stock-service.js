@@ -339,6 +339,85 @@ function assert(cond, msg) {
     pass++;
   } catch (e) { console.log('  ✗ ' + e.message); fail++; }
 
+  // ---------- 11. 红利筛选器 ----------
+  console.log('\n========== 11. 红利筛选器 ==========');
+  try {
+    const t0 = Date.now();
+    const r = await fn.main({ action: 'screener', minYield: 4, page: 1, pageSize: 10 });
+    assert(r.success, 'screener 成功 (构建耗时 ' + ((Date.now() - t0) / 1000).toFixed(1) + 's)');
+    const d = r.data;
+    assert(d.rows.length > 0, '股息率≥4%有结果: 共' + d.totalMatched + '只');
+    for (let i = 1; i < d.rows.length; i++) assert(d.rows[i].ttmYield <= d.rows[i - 1].ttmYield, '按股息率降序');
+    d.rows.forEach((x) => assert(x.price > 0 && x.ttmPerShare > 0 && /^\d{6}$/.test(x.code), '行字段完整'));
+    console.log('  更新于 ' + d.updatedAt.slice(0, 16) + ' · 池内 ' + d.totalMatched + ' 只 ≥4%');
+    d.rows.slice(0, 5).forEach((x) => console.log('    ' + x.name + '(' + x.code + ') ' + x.ttmYield + '%  价' + x.price + '  ' + x.board + '  PE' + x.peTTM));
+
+    // 缓存后翻页（第2页）
+    const r2 = await fn.main({ action: 'screener', minYield: 4, page: 2, pageSize: 10 });
+    assert(r2.success && r2.data.rows.length > 0, '第2页有数据(' + r2.data.rows.length + '条)');
+    assert(r2.data.rows[0].ttmYield <= d.rows[d.rows.length - 1].ttmYield, '翻页衔接正确');
+    pass++;
+  } catch (e) { console.log('  ✗ ' + e.message); fail++; }
+
+  // ---------- 12. 股债利差 ----------
+  console.log('\n========== 12. 股债利差 ==========');
+  try {
+    const r = await fn.main({ action: 'spread' });
+    assert(r.success, 'spread 成功');
+    const s = r.data;
+    assert(s.medianYield > 0 && s.medianYield < 20, '全A中位数股息率: ' + s.medianYield + '%');
+    assert(s.treasury10y > 0 && s.treasury10y < 10, '10Y国债(配置): ' + s.treasury10y + '% @' + s.treasuryAsOf);
+    assert(s.spread !== null && s.spread > -5 && s.spread < 15, '利差: ' + s.spread + '%');
+    assert(s.gte4Count > 0, '股息率≥4%公司数: ' + s.gte4Count);
+    console.log('  中位数股息率 ' + s.medianYield + '% − 国债 ' + s.treasury10y + '% = 利差 ' + s.spread + '% · 分红公司 ' + s.count + ' · ≥4%共' + s.gte4Count + '家');
+    pass++;
+  } catch (e) { console.log('  ✗ ' + e.message); fail++; }
+
+  // ---------- 13. 年度收息报告 ----------
+  console.log('\n========== 13. 年度收息报告 ==========');
+  try {
+    const r = await fn.main({
+      action: 'annualReport',
+      holdings: [
+        { code: '600519', name: '贵州茅台', shares: 100 },
+        { code: '600900', name: '长江电力', shares: 2000 },
+      ],
+    });
+    assert(r.success && r.data, 'annualReport 成功');
+    const d = r.data;
+    assert(d.total > 0, '年度总收息: ' + d.total + '元');
+    assert(d.byMonth.length === 12, '12个月分布');
+    assert(d.byMonth.reduce((a, b) => a + b, 0).toFixed(2) === d.total.toFixed(2), '月分布合计=总额');
+    assert(d.stocks.length === 2 && d.topStock, '两持仓均收息，最大单笔: ' + d.topStock.name + ' ' + d.topStock.amount + '元');
+    console.log('  ' + d.year + '年已收息 ' + d.total + ' 元 · 覆盖 ' + d.monthsActive + ' 个月 · 冠军 ' + d.topStock.name);
+    // 空持仓
+    const rE = await fn.main({ action: 'annualReport', holdings: [] });
+    assert(rE.success && rE.data === null, '空持仓返回 null');
+    pass++;
+  } catch (e) { console.log('  ✗ ' + e.message); fail++; }
+
+  // ---------- 14. 分红再投资模拟 ----------
+  console.log('\n========== 14. 分红再投资模拟 ==========');
+  try {
+    const t0 = Date.now();
+    const r = await fn.main({ action: 'reinvest', code: '600519', market: 'SH', years: 5, capital: 100000 });
+    assert(r.success, 'reinvest 成功 (耗时 ' + ((Date.now() - t0) / 1000).toFixed(1) + 's)');
+    const d = r.data;
+    assert(d.series.length >= 30, '采样序列 >= 30 点: ' + d.series.length);
+    assert(d.dividendCount > 0, '窗口内分红次数: ' + d.dividendCount);
+    assert(d.sharesReinvest > d.sharesStart, '再投持股数增长: ' + d.sharesStart + ' → ' + d.sharesReinvest);
+    assert(d.valueReinvest > 0 && d.valuePlain > 0, '两策略期末市值有效');
+    assert(Math.abs(d.gainR - ((d.valueReinvest / d.capital - 1) * 100)) < 0.5, '再投收益率自洽: ' + d.gainR + '%');
+    console.log('  ' + d.startDate + ' → ' + d.endDate + ' 本金' + d.capital + '元 @ ' + d.price0);
+    console.log('  再投: ' + d.sharesReinvest + '股 市值' + d.valueReinvest + '元 (' + d.gainR + '%)');
+    console.log('  不再投: 市值' + d.valuePlain + '元 含现金' + d.cashPlain + '元 (' + d.gainP + '%)');
+    console.log('  再投超额: ' + (d.gainR - d.gainP).toFixed(1) + ' pct');
+    // 3年窗口
+    const r3 = await fn.main({ action: 'reinvest', code: '600519', market: 'SH', years: 3, capital: 50000 });
+    assert(r3.success && r3.data.years === 3, '3年窗口参数生效');
+    pass++;
+  } catch (e) { console.log('  ✗ ' + e.message); fail++; }
+
   console.log('\n========== 测试汇总: ' + pass + ' 组通过, ' + fail + ' 组失败 ==========');
   process.exit(fail ? 1 : 0);
 })().catch((e) => { console.error('测试崩溃:', e); process.exit(1); });

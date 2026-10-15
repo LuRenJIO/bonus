@@ -311,6 +311,240 @@ async function handleIndexChart(event) {
   return ok(resultM);
 }
 
+/* ---------------- 红利筛选器（全市场 TTM 股息率，12小时缓存） ---------------- */
+const TREASURY_10Y = {
+  value: 1.75,             // 10年期国债收益率（%），手动维护：中国债券信息网 chinabond.com.cn 首页可查
+  asOf: '2026-10-15',      // 配置日期
+};
+
+/** 构建全市场 TTM 股息率数据集（估值快照 × 近365天分红事件聚合） */
+async function buildScreenerDataset() {
+  const cached = cacheGet('scr:full', 12 * 3600 * 1000);
+  if (cached) return cached;
+
+  const [valuation, events] = await Promise.all([
+    ds.getValuationSnapshot().catch(() => null),
+    ds.getMarketDividendEvents(365).catch(() => []),
+  ]);
+  if (!valuation || !valuation.length) throw new Error('全市场估值快照获取失败');
+
+  // 按 code 聚合近365天每股分红（TTM口径，与详情页一致）
+  const ttmByCode = {};
+  const nameByCode = {};
+  events.forEach((e) => {
+    if (!/^\d{6}$/.test(e.code) || !(e.perShare > 0) || !e.exDate) return;
+    ttmByCode[e.code] = +(((ttmByCode[e.code] || 0) + e.perShare).toFixed(4));
+    if (!nameByCode[e.code]) nameByCode[e.code] = e.name;
+  });
+
+  const rows = [];
+  valuation.forEach((v) => {
+    const ttm = ttmByCode[v.code];
+    if (!(ttm > 0)) return;   // 近一年无现金分红的不入池
+    rows.push({
+      code: v.code,
+      name: v.name || nameByCode[v.code] || v.code,
+      price: v.price,
+      ttmPerShare: ttm,
+      ttmYield: +((ttm / v.price) * 100).toFixed(2),
+      peTTM: v.peTTM,
+      pb: v.pb,
+      board: v.board,
+      marketCap: v.marketCap,
+    });
+  });
+  rows.sort((a, b) => b.ttmYield - a.ttmYield);
+
+  // 市场画像：股息率中位数、>4% 家数、分红公司数
+  const yields = rows.map((r) => r.ttmYield).sort((a, b) => a - b);
+  const median = yields.length ? yields[Math.floor(yields.length / 2)] : null;
+  const dataset = {
+    updatedAt: new Date().toISOString(),
+    count: rows.length,
+    medianYield: median,
+    gte4Count: yields.filter((y) => y >= 4).length,
+    rows,
+  };
+  cacheSet('scr:full', dataset);
+  return dataset;
+}
+
+async function handleScreener(event) {
+  const dataset = await buildScreenerDataset();
+  const minYield = isNum(Number(event.minYield)) ? Math.max(0, Number(event.minYield)) : 0;
+  const board = String(event.board || '').trim();
+  const page = Math.max(1, parseInt(event.page, 10) || 1);
+  const pageSize = Math.min(50, Math.max(10, parseInt(event.pageSize, 10) || 30));
+
+  let rows = dataset.rows;
+  if (minYield > 0) rows = rows.filter((r) => r.ttmYield >= minYield);
+  if (board) rows = rows.filter((r) => r.board && r.board.indexOf(board) >= 0);
+
+  const start = (page - 1) * pageSize;
+  return ok({
+    updatedAt: dataset.updatedAt,
+    totalMatched: rows.length,
+    page,
+    pageSize,
+    rows: rows.slice(start, start + pageSize),
+  });
+}
+
+/* ---------------- 股债利差（全A中位数股息率 vs 10Y国债） ---------------- */
+async function handleSpread() {
+  const dataset = await buildScreenerDataset();
+  const spread = dataset.medianYield !== null ? +(dataset.medianYield - TREASURY_10Y.value).toFixed(2) : null;
+  return ok({
+    medianYield: dataset.medianYield,
+    count: dataset.count,
+    gte4Count: dataset.gte4Count,
+    treasury10y: TREASURY_10Y.value,
+    treasuryAsOf: TREASURY_10Y.asOf,
+    spread,
+    updatedAt: dataset.updatedAt,
+  });
+}
+
+/* ---------------- 年度收息报告（基于持仓） ---------------- */
+async function handleAnnualReport(event) {
+  const holdings = (Array.isArray(event.holdings) ? event.holdings : [])
+    .filter((h) => h && /^\d{6}$/.test(String(h.code)) && isNum(Number(h.shares)) && Number(h.shares) > 0)
+    .slice(0, 20);
+  if (!holdings.length) return ok(null);
+
+  const year = String(event.year || new Date().getFullYear());
+  const list = holdings.map((h) => ({
+    code: String(h.code),
+    name: h.name || '',
+    shares: Number(h.shares),
+  }));
+
+  const divLists = await Promise.all(list.map((h) => ds.getDividendHistory(h.code).catch(() => [])));
+  const byMonth = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+  const byStock = {};
+  let total = 0;
+  let topStock = null;
+
+  list.forEach((h, idx) => {
+    const { implemented } = div.parseDividends(divLists[idx]);
+    let stockSum = 0;
+    implemented.forEach((it) => {
+      if (!it.hasCash || !it.exDate || String(it.exDate).slice(0, 4) !== year) return;
+      const amount = it.perShare * h.shares;
+      const month = parseInt(String(it.exDate).slice(5, 7), 10) - 1;
+      if (month >= 0 && month <= 11) byMonth[month] += amount;
+      stockSum += amount;
+    });
+    if (stockSum > 0) {
+      byStock[h.code] = { code: h.code, name: h.name || (dividendName(divLists[idx]) || h.code), amount: +stockSum.toFixed(2) };
+      total += stockSum;
+    }
+  });
+
+  const stocks = Object.values(byStock).sort((a, b) => b.amount - a.amount);
+  if (stocks.length) topStock = stocks[0];
+  const monthsActive = byMonth.filter((m) => m > 0.005).length;
+
+  return ok({
+    year,
+    total: +total.toFixed(2),
+    byMonth: byMonth.map((m) => +m.toFixed(2)),
+    monthsActive,
+    stocks,
+    topStock,
+    holdingCount: list.length,
+  });
+}
+
+function dividendName(rawList) {
+  return rawList && rawList.length ? rawList[0].name : '';
+}
+
+/* ---------------- 分红再投资模拟（真实历史价格+分红，不含税费） ---------------- */
+async function handleReinvest(event) {
+  const code = String(event.code || '').trim();
+  if (!/^\d{6}$/.test(code)) return fail('股票代码格式错误');
+  const market = event.market || (/^(6|9)/.test(code) ? 'SH' : 'SZ');
+  let years = parseInt(event.years, 10);
+  if (!isNum(years)) years = 5;
+  years = Math.max(2, Math.min(years, 5));
+  let capital = Number(event.capital);
+  if (!isNum(capital) || capital <= 0) capital = 100000;
+
+  const ck = 'ri:' + code + ':' + years;
+  const cached = cacheGet(ck, 12 * 3600 * 1000);
+  if (cached) return ok(cached);
+
+  const [daily, dividendRaw] = await Promise.all([
+    ds.getDailyCloses(code, market, years * 250 + 20).catch(() => null),
+    ds.getDividendHistory(code).catch(() => []),
+  ]);
+  if (!daily || daily.length < 120) return fail('历史价格数据不足');
+
+  // 窗口：从首个交易日开始，截取约 years 年
+  const endIdx = Math.min(daily.length - 1, years * 250);
+  const window = daily.slice(0, endIdx + 1);
+  const startDate = window[0].date;
+  const endDate = window[window.length - 1].date;
+
+  // 窗口内已实施的每股分红（除息日 → 再投资于当日收盘价）
+  const { implemented } = div.parseDividends(dividendRaw);
+  const divEvents = implemented
+    .filter((it) => it.hasCash && it.exDate && it.exDate >= startDate && it.exDate <= endDate)
+    .map((it) => ({ exDate: it.exDate, perShare: it.perShare }))
+    .sort((a, b) => (a.exDate > b.exDate ? 1 : -1));
+
+  const price0 = window[0].close;
+  let sharesR = capital / price0;      // 再投策略持股数
+  const sharesP = capital / price0;    // 不再投策略持股数（固定）
+  let cashP = 0;                       // 不再投累计现金分红
+  let divCount = 0;
+
+  // 每月采样序列（图表用）
+  const series = [];
+  let nextSample = 0;
+  const sampleStep = Math.max(1, Math.floor(window.length / 60));
+
+  window.forEach((d, i) => {
+    // 当日及之前未处理的除息分红：收息 → 再投（不再投则累计现金）
+    while (divCount < divEvents.length && divEvents[divCount].exDate <= d.date) {
+      const ev = divEvents[divCount];
+      sharesR += (sharesR * ev.perShare) / d.close;
+      cashP += sharesP * ev.perShare;
+      divCount++;
+    }
+    if (i >= nextSample) {
+      series.push({
+        d: d.date.slice(0, 7),
+        vr: +(sharesR * d.close).toFixed(0),          // 再投组合市值
+        vp: +(sharesP * d.close + cashP).toFixed(0),  // 不再投市值+现金
+      });
+      nextSample = i + sampleStep;
+    }
+  });
+
+  const priceN = window[window.length - 1].close;
+  const valueR = sharesR * priceN;
+  const valueP = sharesP * priceN + cashP;
+  const result = {
+    code, market,
+    startDate, endDate, years,
+    price0, priceN,
+    capital: +capital.toFixed(0),
+    sharesStart: +(capital / price0).toFixed(2),
+    sharesReinvest: +sharesR.toFixed(2),
+    valueReinvest: +valueR.toFixed(0),
+    valuePlain: +valueP.toFixed(0),
+    cashPlain: +cashP.toFixed(0),
+    dividendCount: divEvents.length,
+    gainR: +((valueR / capital - 1) * 100).toFixed(1),
+    gainP: +((valueP / capital - 1) * 100).toFixed(1),
+    series,
+  };
+  cacheSet(ck, result);
+  return ok(result);
+}
+
 /* ---------------- 沪深300月K（12小时缓存，全股票共享） ---------------- */
 async function getIndexCloses() {
   const cached = cacheGet('idx:hs300', 12 * 3600 * 1000);
@@ -442,6 +676,10 @@ exports.main = async (event = {}) => {
       case 'homebrief': return await handleHomeBrief(event);
       case 'checkAlerts': return await handleCheckAlerts(event);
       case 'indexChart': return await handleIndexChart(event);
+      case 'screener': return await handleScreener(event);
+      case 'spread': return await handleSpread(event);
+      case 'annualReport': return await handleAnnualReport(event);
+      case 'reinvest': return await handleReinvest(event);
       default: return fail('未知 action: ' + event.action);
     }
   } catch (e) {

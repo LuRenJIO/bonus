@@ -1,0 +1,58 @@
+<!--reinvest.wxml 分红再投资模拟-->
+<view class="page">
+
+  <!-- 参数 -->
+  <view class="card">
+    <view class="card-title"><text>模拟参数</text><text class="sub">真实历史价格与分红 · 不含税费</text></view>
+    <view class="ri-params">
+      <view class="ri-field">
+        <text class="ri-label">本金(元)</text>
+        <input class="ri-in num" type="number" value="{{capital}}" bindinput="onCapitalInput" bindconfirm="onCapitalConfirm" />
+      </view>
+      <view class="ri-years">
+        <text class="rt {{years === 3 ? 'on' : ''}}" data-v="3" bindtap="onYearsTap">近3年</text>
+        <text class="rt {{years === 5 ? 'on' : ''}}" data-v="5" bindtap="onYearsTap">近5年</text>
+      </view>
+    </view>
+  </view>
+
+  <view wx:if="{{loading}}" class="loading-box">模拟计算中…</view>
+  <view wx:elif="{{error}}" class="empty-box">{{error}}</view>
+
+  <block wx:elif="{{d}}">
+    <!-- 对比结论 -->
+    <view class="card">
+      <view class="card-title">
+        <text>{{d.startDate}} ~ {{d.endDate}}</text>
+        <text class="sub">期间分红 {{d.dividendCount}} 次</text>
+      </view>
+      <view class="ri-two">
+        <view class="ri-col">
+          <view class="ri-col-title gold-text">分红再投</view>
+          <view class="ri-val num">{{d.valueReinvest}}</view>
+          <view class="ri-sub num gold-text">{{d.gainR > 0 ? '+' : ''}}{{d.gainR}}%</view>
+          <view class="ri-note num">持股 {{d.sharesStart}} → {{d.sharesReinvest}} 股</view>
+        </view>
+        <view class="ri-vs">VS</view>
+        <view class="ri-col">
+          <view class="ri-col-title" style="color:#4c8dff">现金持有</view>
+          <view class="ri-val num">{{d.valuePlain}}</view>
+          <view class="ri-sub num" style="color:#4c8dff">{{d.gainP > 0 ? '+' : ''}}{{d.gainP}}%</view>
+          <view class="ri-note num">含现金分红 {{d.cashPlain}} 元</view>
+        </view>
+      </view>
+      <view class="ri-conclusion">{{d.gainR > d.gainP ? '再投策略领先 ' + (d.gainR - d.gainP).toFixed(1) + ' 个百分点——分红复利在发挥作用' : (d.gainR < d.gainP ? '现金持有领先 ' + ((d.gainP - d.gainR)).toFixed(1) + ' 个百分点——该区间股价上行快于分红再投增益' : '两策略收益相同')}}</view>
+    </view>
+
+    <!-- 双线图 -->
+    <view class="card">
+      <view class="card-title"><text>组合市值走势</text><text class="sub">本金 {{d.capital}} 元 @ {{d.price0}}</text></view>
+      <view class="cv-wrap"><canvas type="2d" id="riCanvas" class="ri-cv"></canvas></view>
+      <view class="cv-note">期末股价 {{d.priceN}}（期初 {{d.price0}}）· 月度采样</view>
+    </view>
+
+    <view class="footer-tip">
+      <view>模拟口径：除息日现金分红按当日收盘价全部再买入；现金持有为分红存现金不计利息；不含红利税与交易费用</view>
+    </view>
+  </block>
+</view>

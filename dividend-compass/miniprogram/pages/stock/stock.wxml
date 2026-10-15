@@ -278,7 +278,7 @@
     <view class="card" wx:if="{{d.dividend.annual.length}}">
       <view class="card-title">
         <text>历年分红</text>
-        <text class="sub">按分红年度归属（税前）</text>
+        <text class="sub link-gold" bindtap="goReinvest">再投模拟 ›</text>
       </view>
       <view class="table-row table-head">
         <text class="c-year">年度</text>

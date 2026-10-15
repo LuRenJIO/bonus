@@ -1,0 +1,86 @@
+<!--screener.wxml 股债利差看板 + 全市场红利筛选-->
+<view class="page">
+
+  <!-- 股债利差卡 -->
+  <view class="card spread-card" wx:if="{{spread}}">
+    <view class="card-title">
+      <text>股债利差</text>
+      <text class="sub">全A中位数股息率 − 10Y国债</text>
+    </view>
+    <view class="spread-main">
+      <view class="spread-val num {{spread.spread >= 0 ? 'up' : 'down'}}">{{spread.spread >= 0 ? '+' : ''}}{{spread.spread}}%</view>
+      <view class="spread-comment">{{spread.comment}}</view>
+    </view>
+    <view class="spread-grid">
+      <view class="sp-item">
+        <text class="sp-val num">{{spread.medianYield}}%</text>
+        <text class="sp-label">全A中位数股息率</text>
+      </view>
+      <view class="sp-item">
+        <text class="sp-val num">{{spread.treasury10y}}%</text>
+        <text class="sp-label">10Y国债(配置值)</text>
+      </view>
+      <view class="sp-item">
+        <text class="sp-val num gold-text">{{spread.gte4Count}}</text>
+        <text class="sp-label">股息率≥4%公司</text>
+      </view>
+    </view>
+    <view class="spread-note">分红公司 {{spread.count}} 家 · 国债值请每月在 chinabond.com.cn 核对更新</view>
+  </view>
+
+  <!-- 筛选条件 -->
+  <view class="card">
+    <view class="filter-chips">
+      <view class="chip {{minYield === 3 ? 'on' : ''}}" data-v="3" bindtap="onFilterTap">≥3%</view>
+      <view class="chip {{minYield === 4 ? 'on' : ''}}" data-v="4" bindtap="onFilterTap">≥4%</view>
+      <view class="chip {{minYield === 5 ? 'on' : ''}}" data-v="5" bindtap="onFilterTap">≥5%</view>
+      <view class="chip {{minYield === 7 ? 'on' : ''}}" data-v="7" bindtap="onFilterTap">≥7%</view>
+      <view class="chip {{minYield === 0 ? 'on' : ''}}" data-v="0" bindtap="onFilterTap">全部</view>
+    </view>
+    <view class="board-search">
+      <input class="board-in" placeholder="按行业过滤，如 银行 / 煤炭" placeholder-class="board-ph"
+             value="{{boardInput}}" confirm-type="search" bindinput="onBoardInput" bindconfirm="onBoardSearch" />
+      <view class="board-go" bindtap="onBoardSearch">筛选</view>
+      <view class="board-clear" wx:if="{{board}}" bindtap="onBoardClear">✕</view>
+    </view>
+  </view>
+
+  <view wx:if="{{loading}}" class="loading-box">加载中…（首次约需数秒）</view>
+  <view wx:elif="{{error}}" class="empty-box">
+    <view>{{error}}</view>
+    <view class="retry-btn" bindtap="onRetry">重试</view>
+  </view>
+
+  <!-- 排行列表 -->
+  <block wx:else>
+    <view class="card">
+      <view class="card-title">
+        <text>股息率排行</text>
+        <text class="sub">{{totalMatched}} 只 · {{updatedAt}}</text>
+      </view>
+      <view class="scr-head">
+        <text class="sc-name">股票 / 行业</text>
+        <text class="sc-yld">股息率</text>
+        <text class="sc-meta">价格 / PE / PB</text>
+      </view>
+      <view class="scr-row" wx:for="{{rows}}" wx:key="code"
+            data-code="{{item.code}}" data-name="{{item.name}}" bindtap="goStock">
+        <view class="sc-left">
+          <view class="sc-name-line"><text class="sc-stock">{{item.name}}</text><text class="sc-code num">{{item.code}}</text></view>
+          <view class="sc-board">{{item.board || '—'}}</view>
+        </view>
+        <view class="sc-yld-val num">{{item.ttmYield}}%</view>
+        <view class="sc-meta-val num">
+          <view>{{item.price}}</view>
+          <view class="sc-sub">PE {{item.peTTM === null ? '--' : item.peTTM}} · PB {{item.pb === null ? '--' : item.pb}}</view>
+        </view>
+      </view>
+      <view wx:if="{{!rows.length}}" class="empty-box">当前条件下无匹配股票</view>
+    </view>
+    <view class="footer-tip">
+      <view wx:if="{{hasMore}}">{{loadingMore ? '加载中…' : '上拉加载更多'}}</view>
+      <view>TTM股息率 = 近365天已实施税前分红 ÷ 最新收盘价，与详情页同口径</view>
+      <view>数据来源：东方财富 · 每日更新 ｜ 仅供研究参考，不构成投资建议</view>
+    </view>
+  </block>
+</view>
