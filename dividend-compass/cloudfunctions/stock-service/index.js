@@ -593,8 +593,8 @@ async function handlePortfolio(event) {
     .slice(0, 20);
   if (!holdings.length) return ok({ items: [], summary: null });
 
-  // 5分钟缓存（同一组合重复刷新不重复抓取）
-  const ck = 'pf:' + holdings.map((h) => h.code + ':' + h.shares).join(',');
+  // 5分钟缓存（同一组合重复刷新不重复抓取；键含成本价——改成本即时失效）
+  const ck = 'pf:' + holdings.map((h) => h.code + ':' + h.shares + ':' + (h.cost || 0)).join(',');
   const cached = cacheGet(ck, 5 * 60 * 1000);
   if (cached) return ok(cached);
 

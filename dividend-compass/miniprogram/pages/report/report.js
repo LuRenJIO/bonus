@@ -49,10 +49,11 @@ Page({
     });
   },
 
-  /** 生成分享图：Canvas 绘制 → 保存相册 */
+  /** 生成分享图：Canvas 绘制 → 分享/保存相册 */
   async onSaveCard() {
     if (this.data.saving) return;
     this.setData({ saving: true });
+    let tmp = null;   // 提升作用域：分享失败时 catch 内仍可引用去保存相册
     try {
       const query = wx.createSelectorQuery();
       query.select('#reportCanvas').fields({ node: true, size: true });
@@ -66,27 +67,20 @@ Page({
       ctx.scale(scale, scale);
       this.drawCard(ctx, canvas);
 
-      setTimeout(async () => {
-        try {
-          const tmp = await new Promise((resolve, reject) => {
-            wx.canvasToTempFilePath({ canvas, success: resolve, fail: reject });
-          });
-          await wx.showShareImageMenu({ path: tmp.tempFilePath });
-          this.setData({ saving: false });
-        } catch (e) {
-          // 分享菜单失败 → 存相册
-          try {
-            await wx.saveImageToPhotosAlbum({ filePath: tmp.tempFilePath });
-            wx.showToast({ title: '已保存到相册', icon: 'success' });
-          } catch (e2) {
-            wx.showToast({ title: '保存失败，请重试', icon: 'none' });
-          }
-          this.setData({ saving: false });
-        }
-      }, 300);
+      tmp = await new Promise((resolve, reject) => {
+        wx.canvasToTempFilePath({ canvas, success: resolve, fail: reject });
+      });
+      // 优先唤起分享菜单；用户取消/不支持 → 降级保存相册
+      try {
+        await wx.showShareImageMenu({ path: tmp.tempFilePath });
+      } catch (e) {
+        await wx.saveImageToPhotosAlbum({ filePath: tmp.tempFilePath });
+        wx.showToast({ title: '已保存到相册', icon: 'success' });
+      }
+      this.setData({ saving: false });
     } catch (e) {
       this.setData({ saving: false });
-      wx.showToast({ title: e.message || '生成失败', icon: 'none' });
+      wx.showToast({ title: (e && e.errMsg && /auth/.test(e.errMsg)) ? '请在设置中允许保存到相册' : (e.message || '生成失败，请重试'), icon: 'none' });
     }
   },
 
