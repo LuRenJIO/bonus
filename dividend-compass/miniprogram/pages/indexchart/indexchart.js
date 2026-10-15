@@ -1,4 +1,5 @@
 // pages/indexchart/indexchart.js —— 指数走势：当日分时 + 历史曲线（近1年日线/近5年月线）
+// 支持按住滑动：十字光标跟随 + 顶部数据条实时显示对应时间/价格/涨跌
 const util = require('../../utils/util');
 
 Page({
@@ -13,6 +14,7 @@ Page({
     head: { price: '--', chgText: '--', chgCls: 'flat' },
     minuteData: null,     // {preClose, points}
     histCache: {},        // {1y: {...}, 5y: {...}}
+    pressInfo: null,      // 按住滑动时的数据条 {time, price, chgText, chgCls}
   },
 
   onLoad(options) {
@@ -101,6 +103,7 @@ Page({
   onSwitchMode(e) {
     const mode = e.currentTarget.dataset.mode;
     if (mode === this.data.mode) return;
+    this.clearCrosshair();
     this.setData({ mode });
     if (mode === 'minute') {
       if (this.data.minuteData) { this.draw(); } else { this.loadMinute(); }
@@ -114,13 +117,76 @@ Page({
   onSwitchRange(e) {
     const range = e.currentTarget.dataset.range;
     if (range === this.data.range) return;
+    this.clearCrosshair();
     this.setData({ range });
     this.loadHistory(range);
   },
 
+  /* ---------- 按住滑动：十字光标 + 数据条 ---------- */
+  // 当前曲线点位（随模式变化）
+  currentPoints() {
+    if (this.data.mode === 'minute') {
+      return this.data.minuteData ? this.data.minuteData.points : null;
+    }
+    const h = this.data.histCache[this.data.range];
+    return h ? h.points : null;
+  },
+
+  onChartTouch(e) {
+    const geo = this._geo;
+    if (!geo) return;
+    const pts = this.currentPoints();
+    if (!pts || pts.length < 2) return;
+    const t = e.touches && e.touches[0];
+    if (!t) return;
+    const idx = Math.max(0, Math.min(pts.length - 1, Math.round(((t.x - geo.padL) / geo.plotW) * (pts.length - 1))));
+    if (this._crossIdx === idx) return;   // 未跨点不重绘
+    this._crossIdx = idx;
+    this.draw();
+
+    // 数据条内容：分时=对昨收涨跌；历史=对前一点涨跌
+    const p = pts[idx];
+    let chgPct, timeLabel;
+    if (this.data.mode === 'minute') {
+      chgPct = ((p.price - this.data.minuteData.preClose) / this.data.minuteData.preClose) * 100;
+      timeLabel = p.t;
+    } else {
+      const prev = pts[idx - 1] || p;
+      chgPct = prev.price > 0 ? (p.price / prev.price - 1) * 100 : 0;
+      timeLabel = this.data.range === '5y' ? p.d : p.d.slice(5);   // 5年显示年-月，1年显示月-日
+    }
+    this.setData({
+      pressInfo: {
+        time: timeLabel,
+        price: p.price,
+        chgText: (chgPct >= 0 ? '+' : '') + chgPct.toFixed(2) + '%',
+        chgCls: util.chgClass(chgPct),
+      },
+    });
+  },
+
+  onChartTouchEnd() {
+    this.clearCrosshair();
+  },
+
+  clearCrosshair() {
+    if (this._crossIdx === undefined || this._crossIdx === null) return;
+    this._crossIdx = null;
+    this.setData({ pressInfo: null });
+    this.draw();
+  },
+
   /* ---------- Canvas 2D 渲染 ---------- */
   draw() {
+    const paint = (canvas, ctx, W, H) => {
+      ctx.clearRect(0, 0, W, H);
+      if (this.data.mode === 'minute') this.renderMinute(ctx, W, H);
+      else this.renderHistory(ctx, W, H);
+      if (this._crossIdx !== undefined && this._crossIdx !== null) this.renderCrosshair(ctx);
+    };
     try {
+      // 已缓存画布节点则直接重绘（触摸滑动高频调用不走 SelectorQuery）
+      if (this._cv && this._ctx) { paint(this._cv, this._ctx, this._cvW, this._cvH); return; }
       const query = wx.createSelectorQuery();
       query.select('#chartCanvas').fields({ node: true, size: true });
       query.exec((res) => {
@@ -133,29 +199,52 @@ Page({
         const ctx = canvas.getContext('2d');
         ctx.setTransform(1, 0, 0, 1, 0, 0);
         ctx.scale(dpr, dpr);
-        ctx.clearRect(0, 0, res[0].width, res[0].height);
-        if (this.data.mode === 'minute') this.renderMinute(ctx, res[0].width, res[0].height);
-        else this.renderHistory(ctx, res[0].width, res[0].height);
+        this._cv = canvas; this._ctx = ctx; this._cvW = res[0].width; this._cvH = res[0].height;
+        paint(canvas, ctx, res[0].width, res[0].height);
       });
     } catch (e) { /* canvas 异常静默 */ }
   },
 
   /** 通用折线绘制（含面积渐变） */
-  strokeLine(ctx, xs, ys, color, fillTop, W, plotH, padTop) {
+  strokeLine(ctx, xs, ys, color, fillTop, plotH, padT) {
     ctx.beginPath();
     xs.forEach((x, i) => { if (i === 0) ctx.moveTo(x, ys[i]); else ctx.lineTo(x, ys[i]); });
     ctx.strokeStyle = color;
     ctx.lineWidth = 1.5;
     ctx.stroke();
     // 面积渐变
-    const grad = ctx.createLinearGradient(0, padTop, 0, padTop + plotH);
+    const grad = ctx.createLinearGradient(0, padT, 0, padT + plotH);
     grad.addColorStop(0, fillTop);
     grad.addColorStop(1, 'rgba(0,0,0,0)');
-    ctx.lineTo(xs[xs.length - 1], padTop + plotH);
-    ctx.lineTo(xs[0], padTop + plotH);
+    ctx.lineTo(xs[xs.length - 1], padT + plotH);
+    ctx.lineTo(xs[0], padT + plotH);
     ctx.closePath();
     ctx.fillStyle = grad;
     ctx.fill();
+  },
+
+  /** 十字光标（按住滑动） */
+  renderCrosshair(ctx) {
+    const geo = this._geo;
+    const pts = this.currentPoints();
+    if (!geo || !pts) return;
+    const i = Math.min(this._crossIdx, pts.length - 1);
+    const x = geo.padL + (geo.plotW * i) / (pts.length - 1);
+    const y = geo.padT + geo.plotH * (1 - (pts[i].price - geo.lo) / (geo.hi - geo.lo));
+    ctx.setLineDash([3, 4]);
+    ctx.strokeStyle = 'rgba(230, 237, 243, 0.55)';
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(x, geo.padT); ctx.lineTo(x, geo.padT + geo.plotH); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(geo.padL, y); ctx.lineTo(geo.padL + geo.plotW, y); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.beginPath();
+    ctx.arc(x, y, 3.5, 0, Math.PI * 2);
+    ctx.fillStyle = '#e6edf3';
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(x, y, 6.5, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(230, 237, 243, 0.4)';
+    ctx.stroke();
   },
 
   renderMinute(ctx, W, H) {
@@ -168,6 +257,7 @@ Page({
     let hi = Math.max(d.preClose, Math.max.apply(null, prices));
     const pad = (hi - lo) * 0.08 || hi * 0.002;
     lo -= pad; hi += pad;
+    this._geo = { padL, padT, plotW, plotH, lo, hi };
 
     const n = d.points.length;
     const xs = d.points.map((_, i) => padL + (plotW * i) / (n - 1));
@@ -194,7 +284,7 @@ Page({
     ctx.fillStyle = lineColor;
     ctx.fillText(prices[prices.length - 1].toFixed(2), padL + plotW + 6, ys[ys.length - 1] + 3);
 
-    this.strokeLine(ctx, xs, ys, lineColor, up ? 'rgba(240, 75, 90, 0.18)' : 'rgba(0, 181, 120, 0.18)', W, plotH, padT);
+    this.strokeLine(ctx, xs, ys, lineColor, up ? 'rgba(240, 75, 90, 0.18)' : 'rgba(0, 181, 120, 0.18)', plotH, padT);
 
     // x 轴时间标签（A股交易时段：午休在 120/121 点之间）
     ctx.fillStyle = '#59626d';
@@ -216,6 +306,7 @@ Page({
     let hi = Math.max.apply(null, prices);
     const pad = (hi - lo) * 0.06 || hi * 0.002;
     lo -= pad; hi += pad;
+    this._geo = { padL, padT, plotW, plotH, lo, hi };
 
     const n = d.points.length;
     const xs = d.points.map((_, i) => padL + (plotW * i) / (n - 1));
@@ -243,7 +334,7 @@ Page({
     ctx.textAlign = 'right';
     ctx.fillText('区间 ' + (totalPct >= 0 ? '+' : '') + totalPct + '%', padL + plotW, padT - 8);
 
-    this.strokeLine(ctx, xs, ys, '#d4a94e', 'rgba(212, 169, 78, 0.20)', W, plotH, padT);
+    this.strokeLine(ctx, xs, ys, '#d4a94e', 'rgba(212, 169, 78, 0.20)', plotH, padT);
 
     // x 轴 5 个采样标签
     ctx.fillStyle = '#59626d';

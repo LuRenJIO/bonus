@@ -397,45 +397,96 @@ async function getIndexMonthlyCloses(n) {
   return out.length >= 2 ? out : null;
 }
 
-/** 指数日K收盘序列（腾讯 fqkline，近 n 个交易日） */
+/** 指数日K收盘序列（近 n 个交易日）：腾讯两域名回退 → 新浪兜底 */
 async function getDailyCloses(code, market, n) {
   const sym = String(market || 'SH').toLowerCase() + code;
-  const url = 'https://web.ifzq.gtimg.cn/appstock/app/fqkline/get?param=' +
-    sym + ',day,,,' + (n || 260) + ',';
-  const j = await getJSON(url, { Referer: 'https://gu.qq.com/' });
-  const node = j && j.data && j.data[sym];
-  const rows = (node && (node.day || node.qfqday)) || [];
-  const out = rows.map((r) => ({ date: String(r[0]), close: parseFloat(r[2]) }))
-    .filter((it) => /^\d{4}-\d{2}-\d{2}$/.test(it.date) && isFinite(it.close) && it.close > 0);
-  return out.length >= 2 ? out : null;
+  const want = n || 260;
+
+  // 1) 腾讯 fqkline（web.ifzq / proxy.finance 同构，双域名防限流）
+  for (const host of ['web.ifzq.gtimg.cn', 'proxy.finance.qq.com']) {
+    try {
+      const url = 'https://' + host + '/ifzqgtimg/appstock/app/fqkline/get?param=' +
+        sym + ',day,,,' + want + ',';
+      const j = await getJSON(url, { Referer: 'https://gu.qq.com/' });
+      const node = j && j.data && j.data[sym];
+      const rows = (node && (node.day || node.qfqday)) || [];
+      const out = rows.map((r) => ({ date: String(r[0]), close: parseFloat(r[2]) }))
+        .filter((it) => /^\d{4}-\d{2}-\d{2}$/.test(it.date) && isFinite(it.close) && it.close > 0);
+      if (out.length >= 2) return out;
+    } catch (e) { /* 尝试下一源 */ }
+  }
+
+  // 2) 新浪日K（jsonp 数组，取末 want 条）
+  try {
+    const url = 'https://quotes.sina.cn/cn/api/jsonp_v2.php/var/CN_MarketDataService.getKLineData' +
+      '?symbol=' + sym + '&scale=240&ma=no&datalen=' + want;
+    const text = await httpGet(url, { Referer: 'https://finance.sina.com.cn/' });
+    const m = /\((\[[\s\S]*\])\)/.exec(text);
+    const arr = m ? JSON.parse(m[1]) : [];
+    const out = arr.map((r) => ({ date: String(r.day || ''), close: parseFloat(r.close) }))
+      .filter((it) => /^\d{4}-\d{2}-\d{2}$/.test(it.date) && isFinite(it.close) && it.close > 0)
+      .slice(-want);
+    if (out.length >= 2) return out;
+  } catch (e) { /* 全部失败 */ }
+  return null;
+}
+
+/** 指数昨收价：腾讯实时（p[4]）→ 新浪（现价−涨跌额）兜底，GBK 响应仅解析 ASCII 数字字段 */
+async function getIndexPreClose(sym) {
+  try {
+    const t = await httpGet('https://qt.gtimg.cn/q=' + sym, {});
+    const qm = /="([^"]*)"/.exec(t);
+    if (qm) {
+      const v = parseFloat(qm[1].split('~')[4]);
+      if (isFinite(v) && v > 0) return v;
+    }
+  } catch (e) { /* 尝试新浪 */ }
+  try {
+    const t = await httpGet('https://hq.sinajs.cn/list=' + sym, { Referer: 'https://finance.sina.com.cn/' });
+    const sm = /="([^"]*)"/.exec(t);
+    if (sm) {
+      const f = sm[1].split(',');
+      const price = parseFloat(f[1]);
+      const chg = parseFloat(f[2]);
+      const pre = price - chg;   // 指数格式：名称,当前点位,涨跌额,涨跌率,...
+      if (isFinite(pre) && pre > 0) return pre;
+    }
+  } catch (e) { /* 全部失败 */ }
+  return null;
 }
 
 /**
- * 指数分时数据（腾讯 minute/query）
+ * 指数分时数据（腾讯 minute/query，双域名回退：限流时返回200空数据，需在循环内校验点数）
  * @returns {preClose, points:[{t:'09:30', price}]} 或 null
  */
 async function getIndexMinute(code, market) {
   const sym = String(market || 'SH').toLowerCase() + code;
-  const [mText, qText] = await Promise.all([
-    httpGet('https://web.ifzq.gtimg.cn/appstock/app/minute/query?code=' + sym, { Referer: 'https://gu.qq.com/' }),
-    httpGet('https://qt.gtimg.cn/q=' + sym, {}),
+  const [minuteRes, preClose] = await Promise.all([
+    (async () => {
+      for (const host of ['web.ifzq.gtimg.cn', 'proxy.finance.qq.com']) {
+        try {
+          const mText = await httpGet('https://' + host + '/ifzqgtimg/appstock/app/minute/query?code=' + sym,
+            { Referer: 'https://gu.qq.com/' });
+          const j = JSON.parse(mText);
+          const node = j && j.data && j.data[sym];
+          const arr = (node && node.data && node.data.data) || [];
+          const points = arr.map((s) => {
+            const f = String(s).split(' ');
+            const hhmm = f[0] || '';
+            return {
+              t: hhmm.replace(/^(\d{2})(\d{2})$/, '$1:$2'),
+              price: parseFloat(f[1]),
+            };
+          }).filter((x) => /^\d{2}:\d{2}$/.test(x.t) && isFinite(x.price) && x.price > 0);
+          if (points.length >= 10) return points;   // 有效才返回，否则切下一域名
+        } catch (e) { /* 尝试下一域名 */ }
+      }
+      return null;
+    })(),
+    getIndexPreClose(sym),
   ]);
-  const j = JSON.parse(mText);
-  const node = j && j.data && j.data[sym];
-  const arr = (node && node.data && node.data.data) || [];
-  const points = arr.map((s) => {
-    const f = String(s).split(' ');
-    const hhmm = f[0] || '';
-    return {
-      t: hhmm.replace(/^(\d{2})(\d{2})$/, '$1:$2'),
-      price: parseFloat(f[1]),
-    };
-  }).filter((x) => /^\d{2}:\d{2}$/.test(x.t) && isFinite(x.price) && x.price > 0);
-  // 昨收：实时接口 p[4]
-  const qm = /="([^"]+)"/.exec(qText);
-  const preClose = qm ? parseFloat(qm[1].split('~')[4]) : null;
-  if (points.length < 10 || !isFinite(preClose) || preClose <= 0) return null;
-  return { preClose, points };
+  if (!minuteRes || !preClose) return null;
+  return { preClose, points: minuteRes };
 }
 
 /* ---------------- 7. 分红送配历史（东财 datacenter） ---------------- */
