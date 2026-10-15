@@ -45,8 +45,7 @@ Page({
         conclusion = '两策略收益相同';
       }
       d.conclusion = conclusion;
-      this.setData({ loading: false, error: '', d });
-      this.drawChart();
+      this.setData({ loading: false, error: '', d }, () => this.drawChart());
     } catch (e) {
       this.setData({ loading: false, error: e.message || '加载失败' });
     }
@@ -66,10 +65,18 @@ Page({
   drawChart() {
     const d = this.data.d;
     if (!d || !d.series || d.series.length < 2) return;
+    // canvas 在 wx:elif 分支内：loading 切换会卸载重建，节点可能尚未挂载，最多重试 3 次
+    this.queryCanvas(1, d.series);
+  },
+
+  queryCanvas(attempt, series) {
     const query = wx.createSelectorQuery();
     query.select('#riCanvas').fields({ node: true, size: true });
     query.exec((res) => {
-      if (!res || !res[0] || !res[0].node) return;
+      if (!res || !res[0] || !res[0].node || !res[0].width) {
+        if (attempt < 3) setTimeout(() => this.queryCanvas(attempt + 1, series), 200);
+        return;
+      }
       const canvas = res[0].node;
       let dpr = 2;
       try { dpr = wx.getWindowInfo ? wx.getWindowInfo().pixelRatio : 2; } catch (err) { /* 默认2 */ }
@@ -80,7 +87,7 @@ Page({
       ctx.scale(dpr, dpr);
       const W = res[0].width, H = res[0].height;
       ctx.clearRect(0, 0, W, H);
-      this.renderLines(ctx, W, H, d.series);
+      this.renderLines(ctx, W, H, series);
     });
   },
 

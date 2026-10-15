@@ -57,11 +57,12 @@ Page({
         ladder: ld ? ld.ladder : null,
         ladderInput: ld ? ld.input : '',
         ladderDefault: ld ? ld.def : null,
+      }, () => {
+        util.addRecent({ code: this.data.code, name: d.name || this.data.name, market: this.data.market });
+        if (d.yieldCurve && d.yieldCurve.points && d.yieldCurve.points.length >= 2) {
+          this.drawYieldChart();   // setData 回调内绘制，确保 canvas 节点已挂载
+        }
       });
-      util.addRecent({ code: this.data.code, name: d.name || this.data.name, market: this.data.market });
-      if (d.yieldCurve && d.yieldCurve.points && d.yieldCurve.points.length >= 2) {
-        this.drawYieldChart();   // setData 完成后 canvas 节点已就绪
-      }
     } catch (e) {
       this.setData({ loading: false, error: e.message || '加载失败' });
     }
@@ -183,11 +184,19 @@ Page({
 
   /* ---------- 股息率曲线（Canvas 2D） ---------- */
   drawYieldChart() {
+    // 节点可能因 loading 切换尚未挂载，最多重试 3 次
+    this.queryYieldCanvas(1);
+  },
+
+  queryYieldCanvas(attempt) {
     try {
       const query = wx.createSelectorQuery();
       query.select('#yieldCanvas').fields({ node: true, size: true });
       query.exec((res) => {
-        if (!res || !res[0] || !res[0].node) return;
+        if (!res || !res[0] || !res[0].node || !res[0].width) {
+          if (attempt < 3) setTimeout(() => this.queryYieldCanvas(attempt + 1), 200);
+          return;
+        }
         this.renderChart(res[0].node, res[0].width, res[0].height);
       });
     } catch (e) { /* canvas 异常静默，不影响页面 */ }
