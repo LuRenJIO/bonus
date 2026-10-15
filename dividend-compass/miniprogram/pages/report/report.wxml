@@ -24,7 +24,7 @@
       <view class="card-title"><text>月度分布</text><text class="sub">按除息日归属</text></view>
       <view class="bar-chart">
         <view class="bar-col" wx:for="{{months}}" wx:key="label">
-          <text class="bar-val num" wx:if="{{item.val > 0}}">{{item.val >= 10000 ? (item.val / 10000).toFixed(1) + '万' : Math.round(item.val)}}</text>
+          <text class="bar-val num" wx:if="{{item.val > 0}}">{{item.valText}}</text>
           <view class="bar" style="height: {{item.h}}rpx"></view>
           <text class="bar-label">{{item.label}}</text>
         </view>

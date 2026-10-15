@@ -29,6 +29,7 @@ Page({
       const months = r.byMonth.map((v, i) => ({
         label: (i + 1) + '月',
         val: v,
+        valText: v >= 10000 ? (v / 10000).toFixed(1) + '万' : String(Math.round(v)),   // WXML 不支持函数调用，JS 侧格式化
         h: Math.max(6, Math.round((v / maxMonth) * 150)),
       }));
       this.setData({ loading: false, r, months, maxMonth });

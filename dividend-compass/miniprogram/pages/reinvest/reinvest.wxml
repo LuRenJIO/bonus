@@ -41,7 +41,7 @@
           <view class="ri-note num">含现金分红 {{d.cashPlain}} 元</view>
         </view>
       </view>
-      <view class="ri-conclusion">{{d.gainR > d.gainP ? '再投策略领先 ' + (d.gainR - d.gainP).toFixed(1) + ' 个百分点——分红复利在发挥作用' : (d.gainR < d.gainP ? '现金持有领先 ' + ((d.gainP - d.gainR)).toFixed(1) + ' 个百分点——该区间股价上行快于分红再投增益' : '两策略收益相同')}}</view>
+      <view class="ri-conclusion">{{d.conclusion}}</view>
     </view>
 
     <!-- 双线图 -->

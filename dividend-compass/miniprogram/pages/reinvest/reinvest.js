@@ -35,6 +35,16 @@ Page({
         code: this.data.code, market: this.data.market,
         years: this.data.years, capital: Number(this.data.capital) || 100000,
       });
+      // 结论文案在 JS 侧拼装（WXML 表达式不支持函数调用）
+      let conclusion;
+      if (d.gainR > d.gainP) {
+        conclusion = '再投策略领先 ' + (d.gainR - d.gainP).toFixed(1) + ' 个百分点——分红复利在发挥作用';
+      } else if (d.gainR < d.gainP) {
+        conclusion = '现金持有领先 ' + (d.gainP - d.gainR).toFixed(1) + ' 个百分点——该区间股价上行快于分红再投增益';
+      } else {
+        conclusion = '两策略收益相同';
+      }
+      d.conclusion = conclusion;
       this.setData({ loading: false, error: '', d });
       this.drawChart();
     } catch (e) {

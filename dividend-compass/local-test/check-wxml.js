@@ -30,6 +30,12 @@ const WXS_FORBIDDEN = [
 
 let allOk = true;
 
+// WXML 表达式守卫：{{}} 内不支持任意函数调用（.toFixed( / Math. 等会编译报错 unexpected token `.`）
+const MUSTACHE_FN = [
+  { re: /\.(toFixed|slice|map|filter|reduce|join|concat|push|indexOf|replace|split|round|sqrt|pow|abs|min|max)\s*\(/, what: '{{}} 内的方法调用（.toFixed() 等，请在 JS/WXS 侧格式化后绑定）' },
+  { re: /Math\s*\./, what: '{{}} 内的 Math.xxx（不支持全局对象，请在 JS 侧计算）' },
+];
+
 files.forEach((file) => {
   if (!file.endsWith('.wxml')) return; // wxs 只做受限语法检查，不做标签配对
   const content = fs.readFileSync(file, 'utf8');
@@ -60,6 +66,16 @@ files.forEach((file) => {
     stack.forEach((s) => errors.push('未闭合标签 <' + s.tag + '> @' + s.pos));
   }
   const rel = path.relative(ROOT, file);
+  // Mustache 表达式函数调用检查
+  const mustaches = src.match(/\{\{[\s\S]*?\}\}/g) || [];
+  mustaches.forEach((ms) => {
+    MUSTACHE_FN.forEach((rule) => {
+      if (rule.re.test(ms)) {
+        const line = src.slice(0, src.indexOf(ms)).split('\n').length;
+        errors.push('第' + line + '行: ' + rule.what);
+      }
+    });
+  });
   if (errors.length) {
     allOk = false;
     console.log('FAIL ' + rel);
