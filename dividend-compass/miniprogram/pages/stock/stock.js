@@ -73,7 +73,7 @@ Page({
     const ok = def !== null && isFinite(def) && def > 0;
     return {
       def: ok ? def : null,
-      input: ok ? (Math.round(def * 100) / 100).toString() : '',
+      input: ok ? def.toFixed(3) : '',   // 与预期分红卡一致保留3位小数
       ladder: ok ? util.buildLadder(def, d.quote.price) : null,
     };
   },
@@ -93,7 +93,7 @@ Page({
     const price = this.data.d && this.data.d.quote && this.data.d.quote.price;
     if (!price || !this.data.ladderDefault) return;
     this.setData({
-      ladderInput: (Math.round(this.data.ladderDefault * 100) / 100).toString(),
+      ladderInput: this.data.ladderDefault.toFixed(3),
       ladder: util.buildLadder(this.data.ladderDefault, price),
     });
   },
