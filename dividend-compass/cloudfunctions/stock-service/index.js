@@ -191,6 +191,73 @@ async function handleOverview(event) {
   return ok(result);
 }
 
+/* ---------------- 首页红利速览（10分钟缓存） ---------------- */
+async function handleHomeBrief() {
+  const ck = 'brief';
+  const cached = cacheGet(ck, 10 * 60 * 1000);
+  if (cached) return ok(cached);
+
+  const today = div.toDateStr(new Date());
+  const [csi, hs300, cal] = await Promise.all([
+    ds.getQuote('000922', 'SH').catch(() => null),   // 中证红利指数
+    ds.getQuote('000300', 'SH').catch(() => null),   // 沪深300指数
+    ds.getExDividendCalendar(1).catch(() => []),
+  ]);
+  const exToday = (cal || []).filter((r) => r.exDate === today);
+  const result = {
+    date: today,
+    csiDividend: csi && isNum(csi.price) ? { price: csi.price, changePercent: csi.changePercent } : null,
+    hs300: hs300 && isNum(hs300.price) ? { price: hs300.price, changePercent: hs300.changePercent } : null,
+    exTodayCount: exToday.length,
+    exTodayTop: exToday.slice(0, 3).map((r) => ({ code: r.code, name: r.name, perShare: r.perShare })),
+  };
+  cacheSet(ck, result);
+  return ok(result);
+}
+
+/* ---------------- 股息率提醒检查（前端红点降级方案 / 与定时扫描同口径） ---------------- */
+async function handleCheckAlerts(event) {
+  const rules = (Array.isArray(event.list) ? event.list : [])
+    .filter((r) => r && /^\d{6}$/.test(String(r.code)) && isNum(Number(r.threshold)) && Number(r.threshold) > 0)
+    .slice(0, 20);
+  if (!rules.length) return ok([]);
+
+  const list = rules.map((r) => ({
+    code: String(r.code),
+    name: r.name || '',
+    threshold: +Number(r.threshold).toFixed(2),
+  }));
+  const ck = 'al:' + list.map((r) => r.code + ':' + r.threshold).join(',');
+  const cached = cacheGet(ck, 5 * 60 * 1000);
+  if (cached) return ok(cached);
+
+  const [quotes, divLists] = await Promise.all([
+    ds.quoteBatch(list.map((r) => ({ code: r.code, market: r.market || (/^(6|9)/.test(r.code) ? 'SH' : 'SZ') }))).catch(() => []),
+    Promise.all(list.map((r) => ds.getDividendHistory(r.code).catch(() => []))),
+  ]);
+  const qMap = {};
+  quotes.forEach((q) => { qMap[q.code] = q; });
+
+  const out = list.map((r, idx) => {
+    const quote = qMap[r.code] || {};
+    const { implemented } = div.parseDividends(divLists[idx]);
+    const ttm = div.calcTTMDividend(implemented);
+    const ttmYield = isNum(quote.price) && quote.price > 0 && ttm.perShare > 0
+      ? +((ttm.perShare / quote.price) * 100).toFixed(2)
+      : null;
+    return {
+      code: r.code,
+      name: quote.name || r.name || r.code,
+      price: isNum(quote.price) ? quote.price : null,
+      ttmYield,
+      threshold: r.threshold,
+      triggered: ttmYield !== null && ttmYield >= r.threshold,
+    };
+  });
+  cacheSet(ck, out);
+  return ok(out);
+}
+
 /* ---------------- 沪深300月K（12小时缓存，全股票共享） ---------------- */
 async function getIndexCloses() {
   const cached = cacheGet('idx:hs300', 12 * 3600 * 1000);
@@ -319,6 +386,8 @@ exports.main = async (event = {}) => {
       case 'overview': return await handleOverview(event);
       case 'calendar': return await handleCalendar(event);
       case 'portfolio': return await handlePortfolio(event);
+      case 'homebrief': return await handleHomeBrief(event);
+      case 'checkAlerts': return await handleCheckAlerts(event);
       default: return fail('未知 action: ' + event.action);
     }
   } catch (e) {

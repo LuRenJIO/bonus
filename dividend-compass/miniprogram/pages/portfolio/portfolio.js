@@ -1,5 +1,6 @@
 // pages/portfolio/portfolio.js —— 收息记账：持仓组合的分红收益统计
 const util = require('../../utils/util');
+const config = require('../../config');
 
 Page({
   data: {
@@ -96,6 +97,10 @@ Page({
 
     this.setData({ saving: true });
     try {
+      // 除息到账提醒的订阅授权（配置模板后生效；拒绝不影响保存）
+      if (config.TEMPLATE_ID_EXDIV) {
+        try { await wx.requestSubscribeMessage({ tmplIds: [config.TEMPLATE_ID_EXDIV] }); } catch (e) { /* 忽略 */ }
+      }
       await util.callFavorites('holdingAdd', {
         code: p.code, name: p.name, market: p.market,
         shares, cost: cost > 0 ? cost : null,

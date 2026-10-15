@@ -53,7 +53,10 @@
     <view class="card yield-card">
       <view class="card-title">
         <text>股息率（TTM口径）</text>
-        <text class="sub">近12个月已实施分红 ÷ 现价</text>
+        <view class="yt-right">
+          <text class="sub">近12个月已实施分红 ÷ 现价</text>
+          <text class="bell {{alertOn ? 'on' : ''}}" catchtap="onBellTap">{{alertOn ? '🔔 ≥' + alertThreshold + '%' : '🔔 提醒'}}</text>
+        </view>
       </view>
       <view class="yield-main">
         <view class="yield-left">

@@ -327,6 +327,25 @@
 .yc-pos-tag.pos-rich { color: #6fbf8f; background: rgba(111, 191, 143, 0.12); }
 .yc-pos-tag.pos-mid { color: var(--text-dim); background: rgba(148, 163, 184, 0.12); }
 
+/* ================= 股息率提醒铃铛 ================= */
+.yt-right {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+}
+.bell {
+  font-size: 22rpx;
+  color: var(--text-dim);
+  padding: 4rpx 14rpx;
+  border-radius: 8rpx;
+  background: rgba(148, 163, 184, 0.12);
+}
+.bell.on {
+  color: #e8b95f;
+  background: rgba(212, 169, 78, 0.16);
+  font-weight: 600;
+}
+
 /* ================= 波动与风险 ================= */
 .risk-grid { display: flex; }
 .risk-item {

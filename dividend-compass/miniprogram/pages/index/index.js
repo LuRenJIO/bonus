@@ -1,4 +1,4 @@
-// pages/index/index.js —— 首页：搜索 / 自选股 / 最近浏览
+// pages/index/index.js —— 首页：红利速览 / 提醒横幅 / 搜索 / 自选股 / 最近浏览
 const util = require('../../utils/util');
 
 Page({
@@ -11,6 +11,9 @@ Page({
     favLoading: true,
     favError: '',
     recent: [],
+    briefItems: [],
+    alertHits: [],
+    alertHitsText: '',
   },
 
   searchTimer: null,
@@ -18,6 +21,8 @@ Page({
   onShow() {
     this.setData({ recent: util.getRecent() });
     this.loadFavorites();
+    this.loadBrief();
+    this.loadAlertHits();
   },
 
   onPullDownRefresh() {
@@ -113,5 +118,52 @@ Page({
 
   goPortfolio() {
     wx.navigateTo({ url: '/pages/portfolio/portfolio' });
+  },
+
+  /* ---------- 红利速览 ---------- */
+  async loadBrief() {
+    try {
+      const d = await util.callService('homebrief');
+      const items = [];
+      if (d.csiDividend) {
+        items.push({
+          label: '中证红利',
+          val: (d.csiDividend.changePercent > 0 ? '+' : '') + d.csiDividend.changePercent + '%',
+          cls: util.chgClass(d.csiDividend.changePercent),
+        });
+      }
+      if (d.hs300) {
+        items.push({
+          label: '沪深300',
+          val: (d.hs300.changePercent > 0 ? '+' : '') + d.hs300.changePercent + '%',
+          cls: util.chgClass(d.hs300.changePercent),
+        });
+      }
+      items.push({ label: '今日除息', val: d.exTodayCount + ' 只', cls: 'gold-text', tap: true });
+      this.setData({ briefItems: items });
+    } catch (e) { /* 速览失败不影响主功能 */ }
+  },
+
+  /* ---------- 股息率提醒横幅（无推送时的可见兜底） ---------- */
+  async loadAlertHits() {
+    try {
+      const rules = await util.callFavorites('alertList');
+      if (!rules.length) { this.setData({ alertHits: [], alertHitsText: '' }); return; }
+      const hits = (await util.callService('checkAlerts', {
+        list: rules.map((r) => ({ code: r.code, name: r.name, market: r.market, threshold: r.threshold })),
+      })).filter((r) => r.triggered);
+      this.setData({
+        alertHits: hits,
+        alertHitsText: hits.slice(0, 2).map((h) => h.name + ' ' + h.ttmYield + '%').join('、') + (hits.length > 2 ? ' 等' : ''),
+      });
+    } catch (e) { /* 静默 */ }
+  },
+
+  goAlertStock() {
+    const h = this.data.alertHits[0];
+    if (!h) return;
+    wx.navigateTo({
+      url: '/pages/stock/stock?code=' + h.code + '&name=' + encodeURIComponent(h.name || ''),
+    });
   },
 });

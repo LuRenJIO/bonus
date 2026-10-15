@@ -1,5 +1,6 @@
 // pages/stock/stock.js —— 股票详情：行情/股息率/预测/分红史/财报/体检
 const util = require('../../utils/util');
+const config = require('../../config');
 
 Page({
   data: {
@@ -15,6 +16,8 @@ Page({
     predMode: 'basic',  // basic=多模型区间 | enhanced=盈利修正
     isFav: false,
     favBusy: false,
+    alertOn: false,       // 已设股息率提醒
+    alertThreshold: null, // 提醒阈值（%）
   },
 
   onLoad(options) {
@@ -26,6 +29,7 @@ Page({
     if (this.data.name) wx.setNavigationBarTitle({ title: this.data.name });
     this.loadOverview();
     this.checkFav();
+    this.loadAlert();
   },
 
   onPullDownRefresh() {
@@ -96,6 +100,77 @@ Page({
       ladderInput: this.data.ladderDefault.toFixed(3),
       ladder: util.buildLadder(this.data.ladderDefault, price),
     });
+  },
+
+  /* ---------- 股息率提醒（阈值 + 订阅消息推送） ---------- */
+  async loadAlert() {
+    try {
+      const rules = await util.callFavorites('alertList');
+      const mine = rules.find((r) => r.code === this.data.code);
+      this.setData({
+        alertOn: !!mine,
+        alertThreshold: mine ? mine.threshold : null,
+      });
+    } catch (e) { /* alerts 集合未就绪时静默 */ }
+  },
+
+  onBellTap() {
+    if (this.data.alertOn) {
+      wx.showActionSheet({
+        itemList: ['修改提醒阈值（当前 ≥' + this.data.alertThreshold + '%）', '删除提醒'],
+        success: (res) => {
+          if (res.tapIndex === 0) this.promptAlertThreshold();
+          else if (res.tapIndex === 1) this.removeAlert();
+        },
+      });
+    } else {
+      this.promptAlertThreshold();
+    }
+  },
+
+  promptAlertThreshold() {
+    wx.showModal({
+      title: '股息率提醒',
+      content: 'TTM股息率升到设定值时每日推送（股息率升高=股价回落=红利买点）',
+      editable: true,
+      placeholderText: '阈值，如 4.5',
+      success: async (res) => {
+        if (!res.confirm) return;
+        const v = parseFloat(res.content);
+        if (!(v > 0 && v < 100)) {
+          wx.showToast({ title: '请输入 0~100 的阈值', icon: 'none' });
+          return;
+        }
+        // 订阅授权（配置模板后生效；拒绝也不影响规则保存，走首页横幅提醒）
+        if (config.TEMPLATE_ID_REMIND) {
+          try { await wx.requestSubscribeMessage({ tmplIds: [config.TEMPLATE_ID_REMIND] }); } catch (e) { /* 忽略 */ }
+        }
+        try {
+          await util.callFavorites('alertAdd', {
+            code: this.data.code,
+            name: this.data.name,
+            market: this.data.market,
+            threshold: v,
+          });
+          wx.showToast({ title: '已设提醒 ≥' + v + '%', icon: 'success' });
+          this.loadAlert();
+        } catch (e) {
+          wx.showToast({ title: e.message, icon: 'none' });
+        }
+      },
+    });
+  },
+
+  async removeAlert() {
+    const res = await wx.showModal({ title: '删除提醒', content: '确定删除该股的股息率提醒？' });
+    if (!res.confirm) return;
+    try {
+      await util.callFavorites('alertRemove', { code: this.data.code });
+      wx.showToast({ title: '已删除', icon: 'success' });
+      this.loadAlert();
+    } catch (e) {
+      wx.showToast({ title: e.message, icon: 'none' });
+    }
   },
 
   /* ---------- 股息率曲线（Canvas 2D） ---------- */

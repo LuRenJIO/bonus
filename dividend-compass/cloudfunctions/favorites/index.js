@@ -8,9 +8,12 @@
  *   holdingList                        我的持仓列表
  *   holdingAdd {code, name, market?, shares, cost?}  添加/覆盖持仓
  *   holdingRemove {code}               移除持仓
+ *   alertList                          我的股息率提醒规则列表
+ *   alertAdd {code, name, market?, threshold}   添加/覆盖提醒规则
+ *   alertRemove {code}                 移除提醒规则
  *
  * 部署说明：依赖 wx-server-sdk，上传时选择"上传并部署：云端安装依赖"。
- * 首次调用会自动创建 favorites / holdings 集合。
+ * 首次调用会自动创建 favorites / holdings / alerts 集合。
  */
 
 const cloud = require('wx-server-sdk');
@@ -19,6 +22,7 @@ cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
 const db = cloud.database();
 const COL = 'favorites';
 const COL_H = 'holdings';
+const COL_A = 'alerts';
 
 async function ensureCollection(col) {
   try {
@@ -119,6 +123,51 @@ async function handleHoldingRemove(event) {
   return ok({ removed: true });
 }
 
+/* ---------------- 股息率提醒规则 ---------------- */
+async function handleAlertList() {
+  try {
+    const res = await db.collection(COL_A)
+      .orderBy('addedAt', 'desc')
+      .limit(50)
+      .get();
+    return ok(res.data || []);
+  } catch (e) {
+    if (String(e.errCode) === '-502005' || /not exist|不存在/.test(e.errMsg || '')) {
+      await ensureCollection(COL_A);
+      return ok([]);
+    }
+    throw e;
+  }
+}
+
+async function handleAlertAdd(event) {
+  const code = String(event.code || '').trim();
+  if (!/^\d{6}$/.test(code)) return fail('股票代码格式错误');
+  const threshold = Number(event.threshold);
+  if (!(threshold > 0 && threshold < 100)) return fail('阈值需在 0~100 之间');
+  await ensureCollection(COL_A);
+
+  // 同股覆盖：先删后加
+  await db.collection(COL_A).where({ code }).remove();
+  const res = await db.collection(COL_A).add({
+    data: {
+      code,
+      name: event.name || '',
+      market: event.market || (/^(6|9)/.test(code) ? 'SH' : 'SZ'),
+      threshold: +threshold.toFixed(2),
+      addedAt: db.serverDate(),
+    },
+  });
+  return ok({ id: res._id });
+}
+
+async function handleAlertRemove(event) {
+  const code = String(event.code || '').trim();
+  if (!code) return fail('缺少股票代码');
+  await db.collection(COL_A).where({ code }).remove();
+  return ok({ removed: true });
+}
+
 exports.main = async (event = {}) => {
   try {
     switch (event.action) {
@@ -128,6 +177,9 @@ exports.main = async (event = {}) => {
       case 'holdingList': return await handleHoldingList(event);
       case 'holdingAdd': return await handleHoldingAdd(event);
       case 'holdingRemove': return await handleHoldingRemove(event);
+      case 'alertList': return await handleAlertList(event);
+      case 'alertAdd': return await handleAlertAdd(event);
+      case 'alertRemove': return await handleAlertRemove(event);
       default: return fail('未知 action: ' + event.action);
     }
   } catch (e) {

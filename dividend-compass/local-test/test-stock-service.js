@@ -267,6 +267,45 @@ function assert(cond, msg) {
     pass++;
   } catch (e) { console.log('  ✗ ' + e.message); fail++; }
 
+  // ---------- 8. 首页红利速览 ----------
+  console.log('\n========== 8. 红利速览 ==========');
+  try {
+    const r = await fn.main({ action: 'homebrief' });
+    assert(r.success, 'homebrief 成功');
+    const d = r.data;
+    assert(d.csiDividend && isFinite(d.csiDividend.changePercent), '中证红利指数行情: ' + d.csiDividend.changePercent + '%');
+    assert(d.hs300 && isFinite(d.hs300.changePercent), '沪深300指数行情: ' + d.hs300.changePercent + '%');
+    assert(d.exTodayCount >= 0, '今日除息数量: ' + d.exTodayCount);
+    d.exTodayTop.forEach((x) => assert(/^\d{6}$/.test(x.code) && x.perShare > 0, '除息股字段完整'));
+    console.log('  中证红利 ' + d.csiDividend.changePercent + '% · 沪深300 ' + d.hs300.changePercent + '% · 今日除息 ' + d.exTodayCount + ' 只');
+    pass++;
+  } catch (e) { console.log('  ✗ ' + e.message); fail++; }
+
+  // ---------- 9. 股息率提醒检查 ----------
+  console.log('\n========== 9. 提醒检查 ==========');
+  try {
+    const r = await fn.main({
+      action: 'checkAlerts',
+      list: [
+        { code: '600519', name: '贵州茅台', threshold: 0.01 },   // 必触发
+        { code: '600519', name: '贵州茅台', threshold: 99 },     // 必不触发
+        { code: '600900', name: '长江电力', threshold: 3.0 },    // 真实场景
+      ],
+    });
+    assert(r.success, 'checkAlerts 成功');
+    const rows = r.data;
+    assert(rows.length === 3, '3条规则返回');
+    assert(rows[0].triggered === true && rows[0].ttmYield > 0, '阈值0.01必触发: ' + rows[0].ttmYield + '%');
+    assert(rows[1].triggered === false, '阈值99必不触发');
+    assert(typeof rows[2].triggered === 'boolean', '真实阈值返回布尔');
+    console.log('  茅台 TTM ' + rows[0].ttmYield + '% → 阈值0.01触发=' + rows[0].triggered + ' / 阈值99触发=' + rows[1].triggered);
+    console.log('  长电 TTM ' + rows[2].ttmYield + '% → 阈值3.0触发=' + rows[2].triggered);
+    // 空规则
+    const rEmpty = await fn.main({ action: 'checkAlerts', list: [] });
+    assert(rEmpty.success && rEmpty.data.length === 0, '空规则返回空数组');
+    pass++;
+  } catch (e) { console.log('  ✗ ' + e.message); fail++; }
+
   console.log('\n========== 测试汇总: ' + pass + ' 组通过, ' + fail + ' 组失败 ==========');
   process.exit(fail ? 1 : 0);
 })().catch((e) => { console.error('测试崩溃:', e); process.exit(1); });

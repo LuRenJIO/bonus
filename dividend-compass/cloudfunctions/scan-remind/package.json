@@ -1,0 +1,9 @@
+{
+  "name": "scan-remind",
+  "version": "1.0.0",
+  "description": "拾息记定时扫描：股息率机会提醒 + 分红除息到账通知（订阅消息推送）",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "~2.6.3"
+  }
+}

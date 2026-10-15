@@ -40,6 +40,22 @@
 
   <!-- 默认视图：自选 + 最近浏览 -->
   <block wx:else>
+    <!-- 红利速览（每日理由：中证红利/沪深300/今日除息） -->
+    <view class="brief-card card" wx:if="{{briefItems.length}}">
+      <block wx:for="{{briefItems}}" wx:key="label">
+        <view class="brief-item {{item.tap ? 'brief-tap' : ''}}" bindtap="{{item.tap ? 'goCalendar' : ''}}">
+          <text class="brief-label">{{item.label}}</text>
+          <text class="brief-val num {{item.cls}}">{{item.val}}</text>
+        </view>
+        <view class="brief-div" wx:if="{{index < briefItems.length - 1}}"></view>
+      </block>
+    </view>
+
+    <!-- 股息率提醒横幅（红点降级方案：无推送也可见） -->
+    <view class="alert-banner" wx:if="{{alertHits.length}}" bindtap="goAlertStock">
+      <text class="ab-text">🔔 {{alertHits.length}}只自选触及提醒线：{{alertHitsText}}</text>
+    </view>
+
     <!-- 快捷入口 -->
     <view class="quick-card card">
       <view class="q-item" bindtap="goCalendar">
