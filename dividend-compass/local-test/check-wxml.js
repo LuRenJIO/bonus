@@ -11,15 +11,27 @@ function walk(dir, files) {
   fs.readdirSync(dir).forEach((f) => {
     const p = path.join(dir, f);
     if (fs.statSync(p).isDirectory()) walk(p, files);
-    else if (f.endsWith('.wxml')) files.push(p);
+    else if (f.endsWith('.wxml') || f.endsWith('.wxs')) files.push(p);
   });
   return files;
 }
 
 const files = walk(ROOT, []);
+
+// WXS 受限语法守卫：这些写法在普通 JS 合法，但 WXS 编译器不支持
+const WXS_FORBIDDEN = [
+  { re: /\d[eE][+-]?\d/, what: '科学计数法字面量（如 1e8，请写 100000000）' },
+  { re: /\bisNaN\b/, what: 'isNaN（WXS 无此全局函数，用 v === v 判 NaN）' },
+  { re: /\blet\s+[A-Za-z_$]/, what: 'let 声明（WXS 仅支持 var）' },
+  { re: /\bconst\s+[A-Za-z_$]/, what: 'const 声明（WXS 仅支持 var）' },
+  { re: /=>/, what: '箭头函数（WXS 不支持）' },
+  { re: /`/, what: '模板字符串反引号（WXS 不支持）' },
+];
+
 let allOk = true;
 
 files.forEach((file) => {
+  if (!file.endsWith('.wxml')) return; // wxs 只做受限语法检查，不做标签配对
   const content = fs.readFileSync(file, 'utf8');
   // 去掉注释
   const src = content.replace(/<!--[\s\S]*?-->/g, '');
@@ -58,4 +70,28 @@ files.forEach((file) => {
 });
 
 console.log(allOk ? '\nWXML 标签配对全部通过' : '\n存在标签配对问题');
+
+// ---- WXS 受限语法检查 ----
+console.log('\n---- WXS 语法守卫 ----');
+const wxsFiles = walk(ROOT, []).filter((f) => f.endsWith('.wxs'));
+if (!wxsFiles.length) console.log('(未发现 wxs 文件)');
+wxsFiles.forEach((file) => {
+  const rel = path.relative(ROOT, file);
+  // 去掉注释行再检查
+  const src = fs.readFileSync(file, 'utf8').split('\n')
+    .filter((l) => !l.trim().startsWith('//')).join('\n');
+  const hits = [];
+  WXS_FORBIDDEN.forEach((rule) => {
+    const m = rule.re.exec(src);
+    if (m) hits.push('第' + (src.slice(0, m.index).split('\n').length) + '行: ' + rule.what);
+  });
+  if (hits.length) {
+    allOk = false;
+    console.log('FAIL ' + rel);
+    hits.forEach((h) => console.log('   ' + h));
+  } else {
+    console.log('PASS ' + rel);
+  }
+});
+
 process.exit(allOk ? 0 : 1);

@@ -16,19 +16,22 @@ function clamp(v, min, max) {
   return Math.min(max, Math.max(min, v));
 }
 
+/** 类型安全数字判断（注意 isFinite(null) === true 的 JS 陷阱，不可直接用 isFinite 判空） */
+function isNum(v) { return typeof v === 'number' && isFinite(v); }
+
 function cagr(from, to, years) {
   if (!(from > 0) || !(to > 0) || years <= 0) return null;
   return Math.pow(to / from, 1 / years) - 1;
 }
 
 function mean(arr) {
-  const v = arr.filter((x) => isFinite(x));
+  const v = arr.filter((x) => isNum(x));
   if (!v.length) return null;
   return v.reduce((a, b) => a + b, 0) / v.length;
 }
 
 function std(arr) {
-  const v = arr.filter((x) => isFinite(x));
+  const v = arr.filter((x) => isNum(x));
   if (v.length < 2) return null;
   const m = mean(v);
   return Math.sqrt(v.reduce((a, b) => a + (b - m) * (b - m), 0) / v.length);
@@ -64,7 +67,7 @@ function predict(annualAgg, payoutRatios, financeAnnual, financeReports, price, 
   // ---------- 公共数据准备 ----------
   const profitMap = {}; // 年 → 归母净利润
   financeAnnual.forEach((f) => {
-    if (f.reportDate && f.reportDate.endsWith('12-31') && isFinite(f.parentNetProfit)) {
+    if (f.reportDate && f.reportDate.endsWith('12-31') && isNum(f.parentNetProfit)) {
       profitMap[f.reportDate.slice(0, 4)] = f.parentNetProfit;
     }
   });
@@ -162,7 +165,7 @@ function predict(annualAgg, payoutRatios, financeAnnual, financeReports, price, 
   let latestYoY = null;
   let latestReport = null;
   for (const f of (financeReports || [])) {
-    if (isFinite(f.netProfitYoy) && f.reportDate) { latestYoY = f.netProfitYoy; latestReport = f.reportType || f.reportDate; break; }
+    if (isNum(f.netProfitYoy) && f.reportDate) { latestYoY = f.netProfitYoy; latestReport = f.reportType || f.reportDate; break; }
   }
   if (latestYoY !== null && modelBBase) {
     const blended = modelBBase.profitGrowth * 100 * 0.4 + clamp(latestYoY, -60, 60) * 0.6;
@@ -178,7 +181,7 @@ function predict(annualAgg, payoutRatios, financeAnnual, financeReports, price, 
   // ② 盈利稳定性：近3年净利增速波动
   const growthSeries = [];
   for (let i = 0; i < financeAnnual.length - 1 && growthSeries.length < 3; i++) {
-    if (isFinite(financeAnnual[i].netProfitYoy)) growthSeries.push(financeAnnual[i].netProfitYoy);
+    if (isNum(financeAnnual[i].netProfitYoy)) growthSeries.push(financeAnnual[i].netProfitYoy);
   }
   const gStd = std(growthSeries);
   if (gStd !== null) {
@@ -195,7 +198,7 @@ function predict(annualAgg, payoutRatios, financeAnnual, financeReports, price, 
   // ③ 现金流覆盖：近3年经营现金流/净利润
   const cfRatios = [];
   financeAnnual.slice(0, 3).forEach((f) => {
-    if (isFinite(f.perOperateCashflow) && f.eps > 0) cfRatios.push(f.perOperateCashflow / f.eps);
+    if (isNum(f.perOperateCashflow) && isNum(f.eps) && f.eps > 0) cfRatios.push(f.perOperateCashflow / f.eps);
   });
   const cfRatio = mean(cfRatios);
   if (cfRatio !== null) {

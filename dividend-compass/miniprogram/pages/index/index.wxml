@@ -76,7 +76,7 @@
           <view class="fav-right">
             <view class="fav-price num">{{item.price || '--'}}</view>
             <view class="fav-chg num {{item.changePercent > 0 ? 'up' : item.changePercent < 0 ? 'down' : 'flat'}}">
-              {{item.changePercent === null || item.changePercent === undefined ? '--' : (item.changePercent > 0 ? '+' : '') + item.changePercent + '%'}}
+              {{item.changePercent == null ? '--' : (item.changePercent > 0 ? '+' : '') + item.changePercent + '%'}}
             </view>
           </view>
           <view class="fav-del" data-code="{{item.code}}" catchtap="onRemoveFavorite">✕</view>

@@ -5,6 +5,9 @@
 
 function clampScore(v) { return Math.max(0, Math.min(100, Math.round(v))); }
 
+/** 类型安全数字判断（注意 isFinite(null) === true 的 JS 陷阱，不可直接用 isFinite 判空） */
+function isNum(v) { return typeof v === 'number' && isFinite(v); }
+
 function gradeOf(score) {
   if (score >= 80) return { grade: 'A', label: '优质' };
   if (score >= 65) return { grade: 'B', label: '良好' };
@@ -77,14 +80,14 @@ function healthCheck(opts) {
     const recent = financeAnnual.slice(0, 3).filter((f) => f.reportDate && f.reportDate.endsWith('12-31'));
     let score = 50, status = 'warn', value = '数据不足', note = '年度盈利数据不足';
     if (recent.length >= 2) {
-      const profits = recent.map((f) => f.parentNetProfit).filter((p) => isFinite(p));
+      const profits = recent.map((f) => f.parentNetProfit).filter((p) => isNum(p));
       const allPositive = profits.every((p) => p > 0);
       const maxDrawdown = (() => {
         let worst = 0, peak = -Infinity;
         [...profits].reverse().forEach((p) => { peak = Math.max(peak, p); if (peak > 0) worst = Math.min(worst, (p - peak) / peak); });
         return worst * 100;
       })();
-      const yoys = recent.map((f) => f.netProfitYoy).filter((y) => isFinite(y));
+      const yoys = recent.map((f) => f.netProfitYoy).filter((y) => isNum(y));
       const yoyRange = yoys.length ? Math.max(...yoys) - Math.min(...yoys) : null;
       if (!allPositive) { score = 25; status = 'bad'; note = '近年存在亏损年度，分红基础不牢'; }
       else if (maxDrawdown > -15 && (yoyRange === null || yoyRange < 30)) { score = 90; status = 'good'; note = '盈利持续为正且波动小，分红能力强'; }
@@ -98,7 +101,7 @@ function healthCheck(opts) {
   // ---------- ④ 现金流质量 ----------
   {
     const cf = financeAnnual.slice(0, 3)
-      .filter((f) => isFinite(f.perOperateCashflow) && f.eps > 0)
+      .filter((f) => isNum(f.perOperateCashflow) && isNum(f.eps) && f.eps > 0)
       .map((f) => f.perOperateCashflow / f.eps);
     let score = 50, status = 'warn', value = '数据不足', note = '经营现金流数据不足';
     if (cf.length >= 2) {
@@ -114,7 +117,7 @@ function healthCheck(opts) {
   // ---------- ⑤ 未分配利润覆盖 ----------
   {
     let score = 50, status = 'warn', value = '数据不足', note = '每股未分配利润数据不足';
-    if (isFinite(perUnassignProfit) && ttmDividend && ttmDividend.perShare > 0) {
+    if (isNum(perUnassignProfit) && ttmDividend && ttmDividend.perShare > 0) {
       const cover = perUnassignProfit / ttmDividend.perShare;
       if (cover >= 3) { score = 90; status = 'good'; note = '未分配利润丰厚，即使利润下滑也有充足分红储备'; }
       else if (cover >= 1.5) { score = 70; status = 'good'; note = '未分配利润对分红覆盖较好'; }
@@ -128,7 +131,7 @@ function healthCheck(opts) {
   // ---------- ⑥ 资产负债水平 ----------
   {
     let score = 50, status = 'warn', value = '数据不足', note = '资产负债率数据不足';
-    if (isFinite(latestDebtRatio)) {
+    if (isNum(latestDebtRatio)) {
       if (latestDebtRatio < 50) { score = 90; status = 'good'; }
       else if (latestDebtRatio < 65) { score = 70; status = 'good'; }
       else if (latestDebtRatio < 75) { score = 50; status = 'warn'; }

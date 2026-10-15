@@ -1,14 +1,15 @@
-// format.wxs —— WXML 内联格式化（WXS 语法，ES5）
+// format.wxs —— WXML 内联格式化
+// 注意：WXS 是受限语法子集 —— 不支持科学计数法（1e8）、isNaN 等全局函数
 var ok = function (v) {
   if (v === null || v === undefined) return false;
   if (typeof v !== 'number') return false;
-  return !isNaN(v);
+  return v === v; // NaN 是唯一不等于自身的值，借此排除
 };
 
 var fmtYi = function (v, d) {
   if (!ok(v)) return '--';
   if (d === undefined) d = 2;
-  return (v / 1e8).toFixed(d) + '亿';
+  return (v / 100000000).toFixed(d) + '亿';
 };
 
 var fmtNum = function (v, d) {
@@ -35,7 +36,7 @@ var pct = function (v) {
 
 var year = function (dateStr) {
   if (!dateStr) return '--';
-  return dateStr.slice(0, 4);
+  return dateStr.substring(0, 4);
 };
 
 module.exports = {
@@ -44,5 +45,5 @@ module.exports = {
   signed: signed,
   cls: cls,
   pct: pct,
-  year: year,
+  year: year
 };

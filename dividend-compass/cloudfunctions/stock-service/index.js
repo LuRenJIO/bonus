@@ -15,6 +15,9 @@ const div = require('./lib/dividend');
 const pred = require('./lib/prediction');
 const { healthCheck } = require('./lib/health');
 
+/** 类型安全数字判断（注意 isFinite(null) === true 的 JS 陷阱，不可直接用 isFinite 判空） */
+function isNum(v) { return typeof v === 'number' && isFinite(v); }
+
 // 内存缓存（云函数实例存活期间有效）：行情 60s，其余 5min
 const cache = new Map();
 function cacheGet(key, ttlMs) {
@@ -106,11 +109,11 @@ async function handleOverview(event) {
   const ttmYield = quote.price && ttm.perShare > 0 ? +((ttm.perShare / quote.price) * 100).toFixed(2) : null;
 
   // 最新每股未分配利润：优先最新报告期财报，其次最新分红记录
-  let perUnassign = latestReport && isFinite(latestReport.perUnassignProfit) ? latestReport.perUnassignProfit : null;
-  if (perUnassign === null && dividendRaw.length && isFinite(dividendRaw[0].perUnassignProfit)) {
+  let perUnassign = latestReport && isNum(latestReport.perUnassignProfit) ? latestReport.perUnassignProfit : null;
+  if (perUnassign === null && dividendRaw.length && isNum(dividendRaw[0].perUnassignProfit)) {
     perUnassign = dividendRaw[0].perUnassignProfit;
   }
-  const latestDebtRatio = latestReport && isFinite(latestReport.debtRatio) ? latestReport.debtRatio : null;
+  const latestDebtRatio = latestReport && isNum(latestReport.debtRatio) ? latestReport.debtRatio : null;
 
   // 预测（双模型 + 盈利修正）
   const totalShares = quote.totalShares || (implemented[0] && implemented[0].totalShares) || null;

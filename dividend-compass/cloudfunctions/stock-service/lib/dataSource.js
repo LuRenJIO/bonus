@@ -7,13 +7,18 @@
  */
 
 const https = require('https');
+const zlib = require('zlib');
 
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36';
 
 function httpGet(url, { headers = {}, timeout = 12000 } = {}) {
   return new Promise((resolve, reject) => {
     const req = https.get(url, {
-      headers: Object.assign({ 'User-Agent': UA, 'Accept': '*/*' }, headers),
+      headers: Object.assign({
+        'User-Agent': UA,
+        'Accept': '*/*',
+        'Accept-Encoding': 'identity', // 优先要未压缩响应；个别 CDN 仍压缩时下方兜底解压
+      }, headers),
       timeout,
     }, (res) => {
       if (res.statusCode !== 200) {
@@ -23,7 +28,17 @@ function httpGet(url, { headers = {}, timeout = 12000 } = {}) {
       }
       const chunks = [];
       res.on('data', (c) => chunks.push(c));
-      res.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')));
+      res.on('end', () => {
+        let buf = Buffer.concat(chunks);
+        const enc = String(res.headers['content-encoding'] || '').toLowerCase();
+        const gzipMagic = buf.length > 2 && buf[0] === 0x1f && buf[1] === 0x8b;
+        try {
+          if (enc === 'gzip' || gzipMagic) buf = zlib.gunzipSync(buf);
+          else if (enc === 'deflate') buf = zlib.inflateSync(buf);
+          else if (enc === 'br') buf = zlib.brotliDecompressSync(buf);
+        } catch (e) { /* 解压失败保留原始内容，由上层 JSON.parse 报错触发重试 */ }
+        resolve(buf.toString('utf8'));
+      });
     });
     req.on('timeout', () => { req.destroy(new Error('request timeout')); });
     req.on('error', reject);
@@ -94,7 +109,7 @@ async function quoteFromPush2(secid) {
     fields + '&secid=' + encodeURIComponent(secid);
   const j = await getJSON(url);
   const d = j && j.data;
-  if (!d || d.f43 === undefined || d.f43 === '-') return null;
+  if (!d || d.f43 === undefined || d.f43 === null || d.f43 === '-') return null;
   return {
     source: 'eastmoney',
     name: d.f58,
@@ -295,10 +310,10 @@ async function getDividendHistory(code) {
 }
 
 module.exports = {
-  searchStock: withRetry(searchStock, 1),
-  getQuote: withRetry(getQuote, 1),
-  quoteBatch: withRetry(quoteBatch, 1),
-  getFinanceMain: withRetry(getFinanceMain, 1),
-  getDividendHistory: withRetry(getDividendHistory, 1),
+  searchStock: withRetry(searchStock, 2),
+  getQuote: withRetry(getQuote, 2),
+  quoteBatch: withRetry(quoteBatch, 2),
+  getFinanceMain: withRetry(getFinanceMain, 2),
+  getDividendHistory: withRetry(getDividendHistory, 2),
   buildSecid,
 };
