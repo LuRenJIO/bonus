@@ -140,23 +140,24 @@
   color: var(--text-sub);
 }
 
-/* ---------- 红利速览 ---------- */
+/* ---------- 红利速览（2行×3列） ---------- */
 .brief-card {
   display: flex;
-  align-items: center;
-  padding: 22rpx 10rpx;
+  flex-wrap: wrap;
+  padding: 8rpx 10rpx 16rpx;
 }
 .brief-item {
-  flex: 1;
+  width: 33.33%;
   display: flex;
   flex-direction: column;
   align-items: center;
+  padding: 14rpx 0 6rpx;
 }
 .brief-tap { position: relative; }
 .brief-tap::after {
   content: '›';
   position: absolute;
-  right: 18rpx;
+  right: 22rpx;
   top: 50%;
   transform: translateY(-58%);
   color: var(--text-dim);
@@ -164,7 +165,45 @@
 }
 .brief-label { font-size: 20rpx; color: var(--text-dim); }
 .brief-val { font-size: 30rpx; font-weight: 700; margin-top: 6rpx; }
-.brief-div { width: 1rpx; height: 52rpx; background: var(--border); }
+
+/* ---------- 今日除息弹层 ---------- */
+.ex-mask {
+  position: fixed;
+  left: 0; top: 0; right: 0; bottom: 0;
+  background: rgba(0, 0, 0, 0.55);
+  z-index: 10;
+}
+.ex-sheet {
+  position: fixed;
+  left: 0; right: 0; bottom: 0;
+  margin: 0;
+  border-radius: 24rpx 24rpx 0 0;
+  z-index: 11;
+  padding-bottom: calc(24rpx + env(safe-area-inset-bottom));
+}
+.ex-list {
+  max-height: 50vh;
+}
+.ex-row {
+  display: flex;
+  align-items: center;
+  padding: 18rpx 4rpx;
+  border-bottom: 1rpx solid rgba(148, 163, 184, 0.1);
+}
+.ex-row:last-child { border-bottom: none; }
+.ex-name { font-size: 26rpx; font-weight: 600; margin-right: 14rpx; }
+.ex-code { flex: 1; font-size: 20rpx; color: var(--text-dim); }
+.ex-per { font-size: 24rpx; color: var(--gold); }
+.ex-close {
+  margin-top: 16rpx;
+  height: 76rpx;
+  line-height: 76rpx;
+  text-align: center;
+  background: var(--card-hover);
+  border-radius: 38rpx;
+  font-size: 26rpx;
+  color: var(--text-sub);
+}
 
 /* ---------- 提醒横幅 ---------- */
 .alert-banner {

@@ -131,9 +131,9 @@ Page({
   promptAlertThreshold() {
     wx.showModal({
       title: '股息率提醒',
-      content: 'TTM股息率升到设定值时每日推送（股息率升高=股价回落=红利买点）',
+      content: '股息率达到该值时每日提醒',
       editable: true,
-      placeholderText: '阈值，如 4.5',
+      placeholderText: '如 4.5',
       success: async (res) => {
         if (!res.confirm) return;
         const v = parseFloat(res.content);

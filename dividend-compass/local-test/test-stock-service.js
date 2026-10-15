@@ -275,9 +275,14 @@ function assert(cond, msg) {
     const d = r.data;
     assert(d.csiDividend && isFinite(d.csiDividend.changePercent), '中证红利指数行情: ' + d.csiDividend.changePercent + '%');
     assert(d.hs300 && isFinite(d.hs300.changePercent), '沪深300指数行情: ' + d.hs300.changePercent + '%');
+    assert(d.shIndex && isFinite(d.shIndex.changePercent), '上证指数行情: ' + d.shIndex.changePercent + '%');
     assert(d.exTodayCount >= 0, '今日除息数量: ' + d.exTodayCount);
+    assert(d.exWeekCount >= d.exTodayCount, '7日除息数(' + d.exWeekCount + ') >= 今日(' + d.exTodayCount + ')');
+    assert(d.exTodayCash === null || d.exTodayCash >= 0, '今日派现(亿): ' + d.exTodayCash);
     d.exTodayTop.forEach((x) => assert(/^\d{6}$/.test(x.code) && x.perShare > 0, '除息股字段完整'));
-    console.log('  中证红利 ' + d.csiDividend.changePercent + '% · 沪深300 ' + d.hs300.changePercent + '% · 今日除息 ' + d.exTodayCount + ' 只');
+    assert(d.exTodayTop.length <= 50, '弹层列表 ≤50 条');
+    console.log('  中证红利 ' + d.csiDividend.changePercent + '% · 沪深300 ' + d.hs300.changePercent + '% · 上证 ' + d.shIndex.changePercent + '%');
+    console.log('  今日除息 ' + d.exTodayCount + ' 只 · 派现 ' + d.exTodayCash + ' 亿 · 7日 ' + d.exWeekCount + ' 只 · 弹层列表 ' + d.exTodayTop.length + ' 条');
     pass++;
   } catch (e) { console.log('  ✗ ' + e.message); fail++; }
 

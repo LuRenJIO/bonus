@@ -40,20 +40,40 @@
 
   <!-- 默认视图：自选 + 最近浏览 -->
   <block wx:else>
-    <!-- 红利速览（每日理由：中证红利/沪深300/今日除息） -->
+    <!-- 红利速览：大盘/红利指数 + 今日/7日除息动态 -->
     <view class="brief-card card" wx:if="{{briefItems.length}}">
-      <block wx:for="{{briefItems}}" wx:key="label">
-        <view class="brief-item {{item.tap ? 'brief-tap' : ''}}" bindtap="{{item.tap ? 'goCalendar' : ''}}">
-          <text class="brief-label">{{item.label}}</text>
-          <text class="brief-val num {{item.cls}}">{{item.val}}</text>
-        </view>
-        <view class="brief-div" wx:if="{{index < briefItems.length - 1}}"></view>
-      </block>
+      <view
+        class="brief-item {{item.tap ? 'brief-tap' : ''}}"
+        wx:for="{{briefItems}}"
+        wx:key="label"
+        bindtap="{{item.tap ? 'onExTodayTap' : ''}}"
+      >
+        <text class="brief-label">{{item.label}}</text>
+        <text class="brief-val num {{item.cls}}">{{item.val}}</text>
+      </view>
     </view>
 
     <!-- 股息率提醒横幅（红点降级方案：无推送也可见） -->
     <view class="alert-banner" wx:if="{{alertHits.length}}" bindtap="goAlertStock">
       <text class="ab-text">🔔 {{alertHits.length}}只自选触及提醒线：{{alertHitsText}}</text>
+    </view>
+
+    <!-- 今日除息弹层（与分红日历差异化：只看今天，快速直达） -->
+    <view class="ex-mask" wx:if="{{exSheetOpen}}" bindtap="onExSheetClose"></view>
+    <view class="ex-sheet card" wx:if="{{exSheetOpen}}">
+      <view class="card-title">
+        <text>今日除息 · {{exTodayList.length}} 只</text>
+        <text class="sub" wx:if="{{exTodayCash !== null}}">共派现 {{exTodayCash}} 亿</text>
+      </view>
+      <scroll-view scroll-y class="ex-list">
+        <view class="ex-row" wx:for="{{exTodayList}}" wx:key="code"
+              data-code="{{item.code}}" data-name="{{item.name}}" bindtap="onExPickStock">
+          <text class="ex-name">{{item.name}}</text>
+          <text class="ex-code num">{{item.code}}</text>
+          <text class="ex-per num">每股{{item.perShare}}元</text>
+        </view>
+      </scroll-view>
+      <view class="ex-close" bindtap="onExSheetClose">收起</view>
     </view>
 
     <!-- 快捷入口 -->

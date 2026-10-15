@@ -14,6 +14,9 @@ Page({
     briefItems: [],
     alertHits: [],
     alertHitsText: '',
+    exSheetOpen: false,   // 今日除息弹层
+    exTodayList: [],
+    exTodayCash: null,
   },
 
   searchTimer: null,
@@ -124,24 +127,43 @@ Page({
   async loadBrief() {
     try {
       const d = await util.callService('homebrief');
+      const pct = (v) => (v > 0 ? '+' : '') + v + '%';
       const items = [];
-      if (d.csiDividend) {
-        items.push({
-          label: '中证红利',
-          val: (d.csiDividend.changePercent > 0 ? '+' : '') + d.csiDividend.changePercent + '%',
-          cls: util.chgClass(d.csiDividend.changePercent),
-        });
-      }
-      if (d.hs300) {
-        items.push({
-          label: '沪深300',
-          val: (d.hs300.changePercent > 0 ? '+' : '') + d.hs300.changePercent + '%',
-          cls: util.chgClass(d.hs300.changePercent),
-        });
-      }
+      // 第一行：市场参照
+      if (d.csiDividend) items.push({ label: '中证红利', val: pct(d.csiDividend.changePercent), cls: util.chgClass(d.csiDividend.changePercent) });
+      if (d.hs300) items.push({ label: '沪深300', val: pct(d.hs300.changePercent), cls: util.chgClass(d.hs300.changePercent) });
+      if (d.shIndex) items.push({ label: '上证指数', val: pct(d.shIndex.changePercent), cls: util.chgClass(d.shIndex.changePercent) });
+      // 第二行：今日/7日除息动态
       items.push({ label: '今日除息', val: d.exTodayCount + ' 只', cls: 'gold-text', tap: true });
-      this.setData({ briefItems: items });
+      if (d.exTodayCash !== null) items.push({ label: '今日派现', val: d.exTodayCash + '亿', cls: 'gold-text' });
+      items.push({ label: '7日除息', val: d.exWeekCount + ' 只', cls: '' });
+      this.setData({
+        briefItems: items,
+        exTodayList: d.exTodayTop || [],
+        exTodayCash: d.exTodayCash,
+      });
     } catch (e) { /* 速览失败不影响主功能 */ }
+  },
+
+  /* ---------- 今日除息弹层（与分红日历差异化：只看今天，直达个股） ---------- */
+  onExTodayTap() {
+    if (!this.data.exTodayList.length) {
+      wx.showToast({ title: '今日暂无除息安排', icon: 'none' });
+      return;
+    }
+    this.setData({ exSheetOpen: true });
+  },
+
+  onExSheetClose() {
+    this.setData({ exSheetOpen: false });
+  },
+
+  onExPickStock(e) {
+    const d = e.currentTarget.dataset;
+    this.setData({ exSheetOpen: false });
+    wx.navigateTo({
+      url: '/pages/stock/stock?code=' + d.code + '&name=' + encodeURIComponent(d.name || ''),
+    });
   },
 
   /* ---------- 股息率提醒横幅（无推送时的可见兜底） ---------- */

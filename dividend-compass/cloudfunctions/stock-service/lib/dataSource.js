@@ -445,6 +445,7 @@ async function getExDividendCalendar(days) {
       exDate: (r.EX_DIVIDEND_DATE || '').slice(0, 10),
       perShare: +(r.PRETAX_BONUS_RMB / 10).toFixed(4),  // 每10股 → 每股
       progress: r.ASSIGN_PROGRESS || '',
+      totalShares: r.TOTAL_SHARES,                       // 总股本(股)，用于估算派现总额
     }))
     .filter((r) => r.exDate && r.code);
 }

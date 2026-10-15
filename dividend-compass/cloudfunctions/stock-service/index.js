@@ -198,18 +198,35 @@ async function handleHomeBrief() {
   if (cached) return ok(cached);
 
   const today = div.toDateStr(new Date());
-  const [csi, hs300, cal] = await Promise.all([
+  const [sh, csi, hs300, cal7] = await Promise.all([
+    ds.getQuote('000001', 'SH').catch(() => null),   // 上证指数（大盘参照）
     ds.getQuote('000922', 'SH').catch(() => null),   // 中证红利指数
     ds.getQuote('000300', 'SH').catch(() => null),   // 沪深300指数
-    ds.getExDividendCalendar(1).catch(() => []),
+    ds.getExDividendCalendar(7).catch(() => []),
   ]);
-  const exToday = (cal || []).filter((r) => r.exDate === today);
+
+  // 今日除息（按代码去重，防同股多条记录重复计派现）；7日除息总数
+  const todayMap = {};
+  let weekCount = 0;
+  (cal7 || []).forEach((r) => {
+    weekCount++;
+    if (r.exDate === today && !todayMap[r.code]) todayMap[r.code] = r;
+  });
+  const exTodayList = Object.values(todayMap);
+  let cashSum = 0;
+  exTodayList.forEach((r) => {
+    if (isNum(r.totalShares) && r.totalShares > 0) cashSum += r.perShare * r.totalShares;
+  });
+
   const result = {
     date: today,
+    shIndex: sh && isNum(sh.price) ? { price: sh.price, changePercent: sh.changePercent } : null,
     csiDividend: csi && isNum(csi.price) ? { price: csi.price, changePercent: csi.changePercent } : null,
     hs300: hs300 && isNum(hs300.price) ? { price: hs300.price, changePercent: hs300.changePercent } : null,
-    exTodayCount: exToday.length,
-    exTodayTop: exToday.slice(0, 3).map((r) => ({ code: r.code, name: r.name, perShare: r.perShare })),
+    exTodayCount: exTodayList.length,
+    exTodayCash: cashSum > 0 ? +(cashSum / 1e8).toFixed(1) : null,   // 今日派现总额（亿元）
+    exWeekCount: weekCount,
+    exTodayTop: exTodayList.slice(0, 50).map((r) => ({ code: r.code, name: r.name, perShare: r.perShare })),
   };
   cacheSet(ck, result);
   return ok(result);
