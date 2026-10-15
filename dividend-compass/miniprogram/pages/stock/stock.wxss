@@ -234,22 +234,46 @@
   background: var(--bg);
   border-radius: 12rpx;
   padding: 20rpx;
-  margin-bottom: 20rpx;
+  margin-bottom: 8rpx;
 }
 .lr-title { font-size: 24rpx; color: var(--gold); font-weight: 600; margin-bottom: 16rpx; }
 .lr-grid { display: flex; }
 .lrg-item { flex: 1; display: flex; flex-direction: column; }
 .lrg-label { font-size: 20rpx; color: var(--text-dim); }
-.lrg-val { font-size: 26rpx; font-weight: 600; margin-top: 8rpx; }
-.lrg-sub { font-size: 20rpx; margin-top: 4rpx; }
+.lrg-vals { display: flex; align-items: baseline; margin-top: 8rpx; }
+.lrg-val { font-size: 26rpx; font-weight: 600; white-space: nowrap; }
+.lrg-chg { font-size: 20rpx; margin-left: 10rpx; white-space: nowrap; }
+.lrg-sub { font-size: 20rpx; margin-top: 4rpx; color: var(--text-dim); }
 
-/* 年度财务表：固定列宽 + 禁止换行，确保涨跌色整值生效（换行会导致颜色视觉断裂） */
-.f-year { width: 84rpx; white-space: nowrap; }
-.f-rev { width: 128rpx; white-space: nowrap; }
-.f-g { width: 104rpx; text-align: right; white-space: nowrap; }
-.f-np { width: 120rpx; white-space: nowrap; }
-.f-g2 { width: 104rpx; text-align: right; white-space: nowrap; }
-.f-roe { width: 70rpx; text-align: right; white-space: nowrap; }
+/* 年度财务：每年一行，年份居左、指标两行堆叠、增速徽章、ROE 右栏 */
+.fin-year-row {
+  display: flex;
+  align-items: center;
+  padding: 20rpx 0;
+  border-bottom: 1rpx solid var(--border);
+}
+.fin-year-row:last-child { border-bottom: none; }
+.fy-year-col { width: 100rpx; display: flex; flex-direction: column; flex-shrink: 0; }
+.fy-year { font-size: 32rpx; font-weight: 700; color: var(--gold); line-height: 1.2; }
+.fy-year-sub { font-size: 18rpx; color: var(--text-dim); margin-top: 2rpx; }
+.fy-metrics { flex: 1; display: flex; flex-direction: column; }
+.fm-line { display: flex; align-items: center; }
+.fm-line + .fm-line { margin-top: 10rpx; }
+.fm-label { width: 112rpx; font-size: 20rpx; color: var(--text-dim); flex-shrink: 0; }
+.fm-val { font-size: 26rpx; font-weight: 600; margin-right: 12rpx; white-space: nowrap; }
+.fm-chip {
+  font-size: 20rpx;
+  line-height: 1.5;
+  padding: 2rpx 12rpx;
+  border-radius: 8rpx;
+  white-space: nowrap;
+}
+.fm-chip.up { color: var(--up); background: var(--up-bg); }
+.fm-chip.down { color: var(--down); background: var(--down-bg); }
+.fm-chip.flat { color: var(--text-sub); background: var(--card-hover); }
+.fy-roe { width: 110rpx; display: flex; flex-direction: column; align-items: flex-end; flex-shrink: 0; }
+.fy-roe-val { font-size: 26rpx; font-weight: 600; }
+.fy-roe-label { font-size: 18rpx; color: var(--text-dim); margin-top: 2rpx; }
 
 /* ================= 体检 ================= */
 .health-head {

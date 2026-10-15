@@ -226,43 +226,59 @@
         <view class="lr-grid">
           <view class="lrg-item">
             <text class="lrg-label">营收</text>
-            <text class="lrg-val num">{{fmt.fmtYi(d.finance.latest.revenue, 1)}}</text>
-            <text class="lrg-sub num {{fmt.cls(d.finance.latest.revenueYoy)}}">{{fmt.signed(d.finance.latest.revenueYoy, 1)}}%</text>
+            <view class="lrg-vals">
+              <text class="lrg-val num">{{fmt.fmtYi(d.finance.latest.revenue, 1)}}</text>
+              <text wx:if="{{d.finance.latest.revenueYoy !== null}}" class="lrg-chg num {{fmt.cls(d.finance.latest.revenueYoy)}}">{{fmt.signed(d.finance.latest.revenueYoy, 1)}}%</text>
+            </view>
           </view>
           <view class="lrg-item">
             <text class="lrg-label">归母净利</text>
-            <text class="lrg-val num">{{fmt.fmtYi(d.finance.latest.parentNetProfit, 1)}}</text>
-            <text class="lrg-sub num {{fmt.cls(d.finance.latest.netProfitYoy)}}">{{fmt.signed(d.finance.latest.netProfitYoy, 1)}}%</text>
+            <view class="lrg-vals">
+              <text class="lrg-val num">{{fmt.fmtYi(d.finance.latest.parentNetProfit, 1)}}</text>
+              <text wx:if="{{d.finance.latest.netProfitYoy !== null}}" class="lrg-chg num {{fmt.cls(d.finance.latest.netProfitYoy)}}">{{fmt.signed(d.finance.latest.netProfitYoy, 1)}}%</text>
+            </view>
           </view>
           <view class="lrg-item">
             <text class="lrg-label">ROE</text>
-            <text class="lrg-val num">{{fmt.fmtNum(d.finance.latest.roeWeighted, 2)}}%</text>
+            <view class="lrg-vals">
+              <text class="lrg-val num">{{fmt.fmtNum(d.finance.latest.roeWeighted, 2)}}%</text>
+            </view>
             <text class="lrg-sub">加权</text>
           </view>
           <view class="lrg-item">
             <text class="lrg-label">每股未分配</text>
-            <text class="lrg-val num">{{fmt.fmtNum(d.finance.latest.perUnassignProfit, 2)}}元</text>
+            <view class="lrg-vals">
+              <text class="lrg-val num">{{fmt.fmtNum(d.finance.latest.perUnassignProfit, 2)}}元</text>
+            </view>
             <text class="lrg-sub">利润</text>
           </view>
         </view>
       </view>
 
-      <!-- 年度表 -->
-      <view class="table-row table-head">
-        <text class="f-year">年份</text>
-        <text class="f-rev">营收</text>
-        <text class="f-g">增速</text>
-        <text class="f-np">归母净利</text>
-        <text class="f-g2">增速</text>
-        <text class="f-roe">ROE</text>
-      </view>
-      <view class="table-row" wx:for="{{d.finance.annual}}" wx:key="reportDate">
-        <text class="f-year num">{{fmt.year(item.reportDate)}}</text>
-        <text class="f-rev num">{{fmt.fmtYi(item.revenue, 0)}}</text>
-        <text class="f-g num {{fmt.cls(item.revenueYoy)}}">{{fmt.signed(item.revenueYoy, 1)}}%</text>
-        <text class="f-np num">{{fmt.fmtYi(item.parentNetProfit, 0)}}</text>
-        <text class="f-g2 num {{fmt.cls(item.netProfitYoy)}}">{{fmt.signed(item.netProfitYoy, 1)}}%</text>
-        <text class="f-roe num">{{fmt.fmtNum(item.roeWeighted, 1)}}</text>
+      <!-- 年度财务：每年一档，营收/归母净利纵向堆叠 + 增速徽章 + ROE 独立右栏 -->
+      <view class="fin-list">
+        <view class="fin-year-row" wx:for="{{d.finance.annual}}" wx:key="reportDate">
+          <view class="fy-year-col">
+            <text class="fy-year num">{{fmt.year(item.reportDate)}}</text>
+            <text class="fy-year-sub">年报</text>
+          </view>
+          <view class="fy-metrics">
+            <view class="fm-line">
+              <text class="fm-label">营收</text>
+              <text class="fm-val num">{{fmt.fmtYi(item.revenue, 0)}}</text>
+              <text wx:if="{{item.revenueYoy !== null}}" class="fm-chip num {{fmt.cls(item.revenueYoy)}}">{{fmt.signed(item.revenueYoy, 1)}}%</text>
+            </view>
+            <view class="fm-line">
+              <text class="fm-label">归母净利</text>
+              <text class="fm-val num">{{fmt.fmtYi(item.parentNetProfit, 0)}}</text>
+              <text wx:if="{{item.netProfitYoy !== null}}" class="fm-chip num {{fmt.cls(item.netProfitYoy)}}">{{fmt.signed(item.netProfitYoy, 1)}}%</text>
+            </view>
+          </view>
+          <view class="fy-roe">
+            <text class="fy-roe-val num">{{fmt.fmtNum(item.roeWeighted, 1)}}%</text>
+            <text class="fy-roe-label">ROE</text>
+          </view>
+        </view>
       </view>
     </view>
 
