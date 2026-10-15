@@ -1,5 +1,5 @@
 {
-  "desc": "红利股息宝",
+  "desc": "拾息记",
   "rules": [{
     "action": "allow",
     "page": "*"

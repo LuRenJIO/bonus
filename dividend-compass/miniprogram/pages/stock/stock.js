@@ -93,7 +93,7 @@ Page({
   onShareAppMessage() {
     const d = this.data.d;
     return {
-      title: (d ? d.name : this.data.name) + ' 股息率分析 · 红利股息宝',
+      title: (d ? d.name : this.data.name) + ' 股息率分析 · 拾息记',
       path: '/pages/stock/stock?code=' + this.data.code + '&name=' +
         encodeURIComponent((d && d.name) || this.data.name) + '&market=' + this.data.market,
     };

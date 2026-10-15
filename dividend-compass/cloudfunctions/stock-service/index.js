@@ -1,5 +1,5 @@
 /**
- * 云函数：stock-service —— 红利股息宝核心数据服务
+ * 云函数：stock-service —— 拾息记核心数据服务
  *
  * action:
  *   search   {keyword}            模糊搜索沪深A股
