@@ -205,6 +205,21 @@
   color: var(--text-sub);
 }
 
+/* ---------- 免责声明 ---------- */
+.disclaimer {
+  margin: 0 24rpx 16rpx;
+  padding: 14rpx 20rpx;
+  background: rgba(212, 169, 78, 0.06);
+  border: 1rpx solid rgba(212, 169, 78, 0.18);
+  border-radius: 10rpx;
+  text-align: center;
+}
+.dc-text {
+  font-size: 20rpx;
+  color: var(--text-dim);
+  line-height: 1.6;
+}
+
 /* ---------- 提醒横幅 ---------- */
 .alert-banner {
   margin: 0 24rpx 8rpx;

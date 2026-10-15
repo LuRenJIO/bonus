@@ -54,6 +54,11 @@
       </view>
     </view>
 
+    <!-- 免责声明 -->
+    <view class="disclaimer">
+      <text class="dc-text">ⓘ 数据与内容仅供参考，不构成投资建议 · 股市有风险，投资需谨慎</text>
+    </view>
+
     <!-- 股息率提醒横幅（红点降级方案：无推送也可见） -->
     <view class="alert-banner" wx:if="{{alertHits.length}}" bindtap="goAlertStock">
       <text class="ab-text">🔔 {{alertHits.length}}只自选触及提醒线：{{alertHitsText}}</text>
