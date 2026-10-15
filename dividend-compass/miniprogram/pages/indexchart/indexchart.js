@@ -34,14 +34,14 @@ Page({
 
   /* ---------- 数据加载 ---------- */
   async loadMinute() {
+    this._cv = null;   // loading 切换会卸载重建 canvas，旧节点缓存必须失效
     this.setData({ loading: true, error: '' });
     try {
       const d = await util.callService('indexChart', {
         code: this.data.code, market: this.data.market, mode: 'minute',
       });
-      this.setData({ loading: false, minuteData: d });
+      this.setData({ loading: false, minuteData: d }, () => this.draw());
       this.updateHeadFromMinute(d);
-      this.draw();
     } catch (e) {
       this.setData({ loading: false, error: e.message || '加载失败' });
     }
@@ -50,11 +50,12 @@ Page({
   async loadHistory(range, force) {
     const cache = this.data.histCache;
     if (cache[range] && !force) {
-      this.setData({ loading: false });
+      // 已有缓存：无 loading 切换，canvas 仍挂载，直接重绘
       this.updateHeadFromHistory(cache[range]);
       this.draw();
       return;
     }
+    this._cv = null;   // loading 将切换，canvas 会重建
     this.setData({ loading: true, error: '' });
     try {
       const d = await util.callService('indexChart', {
@@ -62,9 +63,8 @@ Page({
       });
       const next = Object.assign({}, this.data.histCache);
       next[range] = d;
-      this.setData({ loading: false, histCache: next });
+      this.setData({ loading: false, histCache: next }, () => this.draw());
       this.updateHeadFromHistory(d);
-      this.draw();
     } catch (e) {
       this.setData({ loading: false, error: e.message || '加载失败' });
     }
@@ -187,22 +187,30 @@ Page({
     try {
       // 已缓存画布节点则直接重绘（触摸滑动高频调用不走 SelectorQuery）
       if (this._cv && this._ctx) { paint(this._cv, this._ctx, this._cvW, this._cvH); return; }
-      const query = wx.createSelectorQuery();
-      query.select('#chartCanvas').fields({ node: true, size: true });
-      query.exec((res) => {
-        if (!res || !res[0] || !res[0].node) return;
-        const canvas = res[0].node;
-        let dpr = 2;
-        try { dpr = wx.getWindowInfo ? wx.getWindowInfo().pixelRatio : 2; } catch (err) { /* 默认2 */ }
-        canvas.width = res[0].width * dpr;
-        canvas.height = res[0].height * dpr;
-        const ctx = canvas.getContext('2d');
-        ctx.setTransform(1, 0, 0, 1, 0, 0);
-        ctx.scale(dpr, dpr);
-        this._cv = canvas; this._ctx = ctx; this._cvW = res[0].width; this._cvH = res[0].height;
-        paint(canvas, ctx, res[0].width, res[0].height);
-      });
+      this.queryCanvas(1, paint);
     } catch (e) { /* canvas 异常静默 */ }
+  },
+
+  /** 查询画布节点；loading 切换/首屏时节点可能尚未挂载，最多重试 3 次 */
+  queryCanvas(attempt, paint) {
+    const query = wx.createSelectorQuery();
+    query.select('#chartCanvas').fields({ node: true, size: true });
+    query.exec((res) => {
+      if (!res || !res[0] || !res[0].node || !res[0].width) {
+        if (attempt < 3) setTimeout(() => this.queryCanvas(attempt + 1, paint), 200);
+        return;
+      }
+      const canvas = res[0].node;
+      let dpr = 2;
+      try { dpr = wx.getWindowInfo ? wx.getWindowInfo().pixelRatio : 2; } catch (err) { /* 默认2 */ }
+      canvas.width = res[0].width * dpr;
+      canvas.height = res[0].height * dpr;
+      const ctx = canvas.getContext('2d');
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.scale(dpr, dpr);
+      this._cv = canvas; this._ctx = ctx; this._cvW = res[0].width; this._cvH = res[0].height;
+      paint(canvas, ctx, res[0].width, res[0].height);
+    });
   },
 
   /** 通用折线绘制（含面积渐变） */
