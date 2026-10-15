@@ -117,4 +117,51 @@ function latestFullYear(annualAgg) {
   return annualAgg[annualAgg.length - 1];
 }
 
-module.exports = { parseDividends, calcTTMDividend, aggregateAnnual, calcPayoutRatios, latestFullYear, toDateStr };
+/**
+ * 股息率曲线时序：各月末 TTM 股息率 + 预期股息率点
+ * 口径与核心 TTM 一致：月末收盘价（不复权）÷ 近365天已实施每股分红
+ * @param implemented parseDividends 结果（降序，内部转升序）
+ * @param monthlyCloses dataSource.getMonthlyCloses 结果（升序）
+ * @param expectedYield 预期股息率%（中性预测，可 null）
+ */
+function calcYieldSeries(implemented, monthlyCloses, expectedYield) {
+  if (!monthlyCloses || monthlyCloses.length < 2) return null;
+  const asc = implemented.slice().sort((a, b) => (a.exDate > b.exDate ? 1 : -1));
+  const points = [];
+  monthlyCloses.forEach((m) => {
+    const endStr = monthEndStr(m.ym);
+    const cutoff = new Date(new Date(endStr).getTime() - 365 * 24 * 3600 * 1000);
+    const cutoffStr = toDateStr(cutoff);
+    let ttm = 0;
+    asc.forEach((it) => {
+      if (it.hasCash && it.exDate && it.exDate > cutoffStr && it.exDate <= endStr) ttm += it.perShare;
+    });
+    points.push({ ym: m.ym, yield: +((ttm / m.close) * 100).toFixed(2) });
+  });
+  // 从第一个有分红的月份开始，避免曲线前段长期为 0
+  let start = 0;
+  while (start < points.length - 1 && points[start].yield <= 0) start++;
+  const trimmed = points.slice(start);
+
+  // 预期点：放在下一个月，前端以"预期"标注
+  let expected = null;
+  if (expectedYield !== null && expectedYield !== undefined && isFinite(expectedYield) && trimmed.length) {
+    const lastYm = trimmed[trimmed.length - 1].ym;
+    const y = parseInt(lastYm.slice(0, 4), 10);
+    const mo = parseInt(lastYm.slice(5, 7), 10);
+    const next = mo === 12 ? (y + 1) + '-01' : y + '-' + (mo + 1 < 10 ? '0' + (mo + 1) : mo + 1);
+    expected = { ym: next, yield: +expectedYield.toFixed(2) };
+  }
+  return { points: trimmed, expected };
+}
+
+/** 月份 'YYYY-MM' → 该月末日期字符串（用于 TTM 截止判断，取次月1日前一天即月末） */
+function monthEndStr(ym) {
+  const y = parseInt(ym.slice(0, 4), 10);
+  const mo = parseInt(ym.slice(5, 7), 10);
+  const nextFirst = new Date(y, mo, 1);   // 次月1日
+  nextFirst.setDate(0);                    // 回退到本月末
+  return toDateStr(nextFirst);
+}
+
+module.exports = { parseDividends, calcTTMDividend, aggregateAnnual, calcPayoutRatios, latestFullYear, calcYieldSeries, toDateStr };

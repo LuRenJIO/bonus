@@ -345,7 +345,46 @@ function pushEps(map, year, val) {
   map[year].push(v);
 }
 
-/* ---------------- 5. 分红送配历史（东财 datacenter） ---------------- */
+/* ---------------- 5. 历史月K线（不复权，用于股息率曲线） ---------------- */
+
+/**
+ * 获取近 N 个月的月末收盘价（不复权——股息率=当时真实分红/当时真实股价）
+ * 主源腾讯 proxy.finance.qq.com，备源东财 push2his
+ * @returns [{ym:'2021-01', close: 1998.0}, ...] 升序；失败返回 null
+ */
+async function getMonthlyCloses(code, market, months) {
+  const n = months || 66;
+  const list = await getMonthlyTencent(code, market, n).catch(() => null);
+  if (list && list.length) return list;
+  return getMonthlyEast(code, market, n).catch(() => null);
+}
+
+async function getMonthlyTencent(code, market, n) {
+  const sym = (market === 'SH' ? 'sh' : 'sz') + code;
+  const url = 'https://proxy.finance.qq.com/ifzqgtimg/appstock/app/fqkline/get?param=' +
+    sym + ',month,,,' + n + ',';
+  const j = await getJSON(url, { Referer: 'https://gu.qq.com/' });
+  const node = j && j.data && j.data[sym];
+  const rows = (node && (node.month || node.qfqmonth)) || [];
+  const out = rows.map((r) => ({ ym: String(r[0]).slice(0, 7), close: parseFloat(r[2]) }))
+    .filter((it) => it.ym && isFinite(it.close) && it.close > 0);
+  return out.length >= 2 ? out : null;
+}
+
+async function getMonthlyEast(code, market, n) {
+  const secid = (market === 'SH' ? '1.' : '0.') + code;
+  const url = 'https://push2his.eastmoney.com/api/qt/stock/kline/get?ut=fa5fd1943c7b386f172d6893dbfba10b' +
+    '&secid=' + secid + '&klt=103&fqt=0&lmt=' + n + '&end=20500101&fields1=f1,f2,f3&fields2=f51,f53';
+  const j = await getJSON(url);
+  const kl = (j && j.data && j.data.klines) || [];
+  const out = kl.map((s) => {
+    const parts = String(s).split(',');
+    return { ym: (parts[0] || '').slice(0, 7), close: parseFloat(parts[1]) };
+  }).filter((it) => it.ym && isFinite(it.close) && it.close > 0);
+  return out.length >= 2 ? out : null;
+}
+
+/* ---------------- 6. 分红送配历史（东财 datacenter） ---------------- */
 
 async function getDividendHistory(code) {
   const url = 'https://datacenter-web.eastmoney.com/api/data/v1/get?reportName=RPT_SHAREBONUS_DET' +
@@ -379,6 +418,7 @@ module.exports = {
   quoteBatch: withRetry(quoteBatch, 2),
   getFinanceMain: withRetry(getFinanceMain, 2),
   getAnalystConsensus: withRetry(getAnalystConsensus, 1),
+  getMonthlyCloses: withRetry(getMonthlyCloses, 1),
   getDividendHistory: withRetry(getDividendHistory, 2),
   buildSecid,
 };

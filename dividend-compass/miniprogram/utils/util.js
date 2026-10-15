@@ -67,6 +67,32 @@ function addRecent(stock) {
   return list;
 }
 
+/**
+ * 股息率阶梯：预期分红 ÷ 各档股息率 → 对应买入参考价
+ * @param dividend 预期每股分红（元，中性预测）
+ * @param price 现价（元）
+ * @returns {rows:[{yield:3, price:'428.50', diff:'+1.2'}], closestIndex} 或 null
+ */
+function buildLadder(dividend, price) {
+  if (!dividend || !isFinite(dividend) || dividend <= 0) return null;
+  if (!price || !isFinite(price) || price <= 0) return null;
+  const rows = [];
+  let closestIndex = 0;
+  let minGap = Infinity;
+  for (let y = 3; y <= 9.001; y += 0.5) {
+    const p = dividend / (y / 100);
+    const diff = (p / price - 1) * 100;   // 较现价：负=股价需跌到该位才有此股息率
+    rows.push({
+      yield: (Math.round(y * 10) / 10).toFixed(1),
+      price: p.toFixed(2),
+      diff: (diff > 0 ? '+' : '') + diff.toFixed(1),
+    });
+    const gap = Math.abs(p - price);
+    if (gap < minGap) { minGap = gap; closestIndex = rows.length - 1; }
+  }
+  return { rows: rows, closestIndex: closestIndex, dividend: +dividend.toFixed(4) };
+}
+
 module.exports = {
   callService,
   callFavorites,
@@ -76,4 +102,5 @@ module.exports = {
   fmtSigned,
   getRecent,
   addRecent,
+  buildLadder,
 };

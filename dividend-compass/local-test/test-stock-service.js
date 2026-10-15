@@ -11,6 +11,8 @@ require('./proxy-patch'); // 沙箱/代理网络环境专用，生产云函数�
 
 // stock-service 零依赖，直接 require
 const fn = require('../cloudfunctions/stock-service/index.js');
+// 前端纯函数（buildLadder 不依赖 wx，可在 node 下验证）
+const util = require('../miniprogram/utils/util.js');
 
 function fmtYi(v) {
   if (v === null || v === undefined || !isFinite(v)) return '-';
@@ -118,12 +120,49 @@ function assert(cond, msg) {
     assert(r2.data.meta.calcTime === d.meta.calcTime, '不带 refresh 时命中缓存（calcTime 相同）');
     const r3 = await fn.main({ action: 'overview', code: '600519', refresh: true });
     assert(r3.data.meta.calcTime !== d.meta.calcTime, 'refresh=true 绕过缓存重新计算（calcTime 已更新）');
+    const d3 = r3.data;
+
+    // 股息率曲线
+    const yc = d3.yieldCurve;
+    assert(yc && yc.points && yc.points.length >= 24, '股息率曲线点位 >= 24个月');
+    for (let i = 1; i < yc.points.length; i++) assert(yc.points[i].ym > yc.points[i - 1].ym, '曲线月份升序: ' + yc.points[i - 1].ym + ' < ' + yc.points[i].ym);
+    assert(yc.points.every((p) => p.yield >= 0), '曲线股息率非负');
+    const lastPt = yc.points[yc.points.length - 1];
+    console.log('\n  [股息率曲线] ' + yc.points.length + '个月末点 (' + yc.points[0].ym + ' ~ ' + lastPt.ym + ')' +
+      ', 最新TTM股息率 ' + lastPt.yield + '%' + (yc.expected ? ', 预期点 ' + yc.expected.ym + ': ' + yc.expected.yield + '%' : ''));
+    // 与核心 TTM 口径一致性（月末现价≠最新价，允许小幅偏差）
+    assert(Math.abs(lastPt.yield - d3.dividend.ttm.yield) < 0.6, '曲线末点与TTM口径一致: ' + lastPt.yield + ' vs ' + d3.dividend.ttm.yield);
+    if (yc.expected) {
+      const neutralY = d3.prediction.enhanced ? d3.prediction.enhanced.yields.neutral : d3.prediction.basic.yields.neutral;
+      assert(Math.abs(yc.expected.yield - neutralY) < 0.01, '预期点=中性预测股息率');
+    }
+
+    // 股息率阶梯（前端纯函数，本地直接验证；用盈利修正中性分红）
+    const neutralDiv = p.enhanced ? p.enhanced.range.neutral : p.basic.range.neutral;
+    const ladder = util.buildLadder(neutralDiv, d3.quote.price);
+    assert(ladder && ladder.rows.length === 13, '阶梯13档（3%~9%步进0.5%）');
+    for (let i = 1; i < ladder.rows.length; i++) assert(parseFloat(ladder.rows[i].price) < parseFloat(ladder.rows[i - 1].price), '阶梯价格单调递减');
+    const hit = ladder.rows[ladder.closestIndex];
+    console.log('  [股息率阶梯] 预期分红' + neutralDiv + '元 × 13档，现价' + d3.quote.price + '元命中 ' + hit.yield + '% 档（对应股价' + hit.price + '元）');
+    assert(Math.abs(neutralDiv / 0.05 - parseFloat(ladder.rows[4].price)) < 0.01, '5%档价格=分红/0.05');
 
     // 体检
     const h = d.health;
     console.log('\n  [分红体检] ' + h.score + '分 ' + h.grade + '(' + h.label + ')');
     h.items.forEach((it) => console.log('    ' + (it.status === 'good' ? '●绿' : it.status === 'warn' ? '●黄' : '●红') + ' ' + it.name + ': ' + it.value + ' (' + it.score + '分) ' + it.note));
     assert(h.score > 0 && h.items.length === 6, '体检6项完整');
+    pass++;
+  } catch (e) { console.log('  ✗ ' + e.message); fail++; }
+
+  // ---------- 3.5 边缘：分红较少的股票不崩溃 ----------
+  console.log('\n========== 3.5 边缘 300750 宁德时代 ==========');
+  try {
+    const rEdge = await fn.main({ action: 'overview', code: '300750', refresh: true });
+    assert(rEdge.success === true, 'overview 正常返回');
+    const edgeYc = rEdge.data.yieldCurve;
+    console.log('  TTM ' + rEdge.data.dividend.ttm.yield + '%  曲线点数 ' + (edgeYc ? edgeYc.points.length : 0) +
+      (edgeYc && edgeYc.expected ? '  预期点 ' + edgeYc.expected.yield + '%' : '  (无预期点)'));
+    if (edgeYc) assert(edgeYc.points.length >= 2, '曲线点位正常');
     pass++;
   } catch (e) { console.log('  ✗ ' + e.message); fail++; }
 

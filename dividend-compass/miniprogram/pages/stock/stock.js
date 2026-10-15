@@ -9,7 +9,8 @@ Page({
     loading: true,
     error: '',
     d: null,            // overview 聚合数据
-    predMode: 'basic',  // basic=双模型区间 | enhanced=盈利修正
+    ladder: null,       // 股息率阶梯数据
+    predMode: 'basic',  // basic=多模型区间 | enhanced=盈利修正
     isFav: false,
     favBusy: false,
   },
@@ -42,10 +43,169 @@ Page({
         refresh: force === true,
       });
       if (d.name) wx.setNavigationBarTitle({ title: d.name });
-      this.setData({ d: d, loading: false, error: '' });
+      this.setData({ d: d, loading: false, error: '', ladder: this.buildLadderData(d) });
       util.addRecent({ code: this.data.code, name: d.name || this.data.name, market: this.data.market });
+      if (d.yieldCurve && d.yieldCurve.points && d.yieldCurve.points.length >= 2) {
+        this.drawYieldChart();   // setData 完成后 canvas 节点已就绪
+      }
     } catch (e) {
       this.setData({ loading: false, error: e.message || '加载失败' });
+    }
+  },
+
+  /* ---------- 股息率阶梯 ---------- */
+  buildLadderData(d) {
+    if (!d || !d.prediction || !d.quote || !d.quote.price) return null;
+    const p = d.prediction;
+    // 优先用盈利修正中性预测，无增强模式时退回多模型中性
+    const div = (p.enhanced && p.enhanced.range) ? p.enhanced.range.neutral : (p.basic ? p.basic.range.neutral : null);
+    if (!div) return null;
+    return util.buildLadder(div, d.quote.price);
+  },
+
+  /* ---------- 股息率曲线（Canvas 2D） ---------- */
+  drawYieldChart() {
+    try {
+      const query = wx.createSelectorQuery();
+      query.select('#yieldCanvas').fields({ node: true, size: true });
+      query.exec((res) => {
+        if (!res || !res[0] || !res[0].node) return;
+        this.renderChart(res[0].node, res[0].width, res[0].height);
+      });
+    } catch (e) { /* canvas 异常静默，不影响页面 */ }
+  },
+
+  renderChart(canvas, cssW, cssH) {
+    const d = this.data.d;
+    const series = d && d.yieldCurve;
+    if (!series || !series.points || series.points.length < 2) return;
+    let dpr = 2;
+    try { dpr = (wx.getWindowInfo ? wx.getWindowInfo() : wx.getSystemInfoSync()).pixelRatio || 2; } catch (e) { /* 默认2 */ }
+    canvas.width = cssW * dpr;
+    canvas.height = cssH * dpr;
+    const ctx = canvas.getContext('2d');
+    ctx.scale(dpr, dpr);
+    ctx.clearRect(0, 0, cssW, cssH);
+
+    const pts = series.points;
+    const exp = series.expected;
+    const PAD = { l: 10, r: 46, t: 16, b: 24 };
+    const plotW = cssW - PAD.l - PAD.r;
+    const plotH = cssH - PAD.t - PAD.b;
+
+    // Y 轴刻度：0 → niceMax（0.5% 步进）
+    let maxV = 0;
+    pts.forEach((p) => { if (p.yield > maxV) maxV = p.yield; });
+    if (exp && exp.yield > maxV) maxV = exp.yield;
+    const yMax = Math.max(1, Math.ceil((maxV * 1.12) * 2) / 2);
+    const yStep = yMax > 8 ? 2 : (yMax > 4 ? 1 : 0.5);
+    const xOf = (i, total) => PAD.l + (total <= 1 ? 0 : (i / (total - 1)) * plotW);
+    const yOf = (v) => PAD.t + (1 - v / yMax) * plotH;
+
+    // 网格与右轴标签
+    ctx.font = '10px sans-serif';
+    ctx.textBaseline = 'middle';
+    for (let v = 0; v <= yMax + 1e-9; v += yStep) {
+      const y = yOf(v);
+      ctx.strokeStyle = v === 0 ? 'rgba(148,163,184,0.35)' : 'rgba(148,163,184,0.14)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(PAD.l, y);
+      ctx.lineTo(PAD.l + plotW, y);
+      ctx.stroke();
+      ctx.fillStyle = 'rgba(139,148,158,0.9)';
+      ctx.textAlign = 'left';
+      ctx.fillText(v + '%', PAD.l + plotW + 6, y);
+    }
+
+    // 渐变填充（曲线下方）
+    const grad = ctx.createLinearGradient(0, PAD.t, 0, PAD.t + plotH);
+    grad.addColorStop(0, 'rgba(212,169,78,0.28)');
+    grad.addColorStop(1, 'rgba(212,169,78,0.02)');
+    ctx.beginPath();
+    pts.forEach((p, i) => {
+      const x = xOf(i, pts.length);
+      const y = yOf(p.yield);
+      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    });
+    ctx.lineTo(xOf(pts.length - 1, pts.length), PAD.t + plotH);
+    ctx.lineTo(PAD.l, PAD.t + plotH);
+    ctx.closePath();
+    ctx.fillStyle = grad;
+    ctx.fill();
+
+    // 历史曲线（金色）+ 数据点
+    ctx.beginPath();
+    pts.forEach((p, i) => {
+      const x = xOf(i, pts.length);
+      const y = yOf(p.yield);
+      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    });
+    ctx.strokeStyle = '#d4a94e';
+    ctx.lineWidth = 2;
+    ctx.lineJoin = 'round';
+    ctx.stroke();
+    // 最新点实心
+    const last = pts[pts.length - 1];
+    ctx.beginPath();
+    ctx.arc(xOf(pts.length - 1, pts.length), yOf(last.yield), 3, 0, Math.PI * 2);
+    ctx.fillStyle = '#d4a94e';
+    ctx.fill();
+
+    // 预期段：金色虚线延伸 + 红色空心点 + 数值标签
+    if (exp) {
+      const x0 = xOf(pts.length - 1, pts.length);
+      const x1 = xOf(pts.length, pts.length + 1);
+      ctx.beginPath();
+      ctx.moveTo(x0, yOf(last.yield));
+      ctx.lineTo(x1, yOf(exp.yield));
+      ctx.strokeStyle = 'rgba(229,115,115,0.9)';
+      ctx.setLineDash([4, 3]);
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.beginPath();
+      ctx.arc(x1, yOf(exp.yield), 3.5, 0, Math.PI * 2);
+      ctx.strokeStyle = '#e57373';
+      ctx.fillStyle = '#1a1d24';
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = '#e57373';
+      ctx.textAlign = 'right';
+      ctx.fillText(exp.yield + '%', x1 + 34, yOf(exp.yield) - 8);
+    }
+
+    // 现价 TTM 参考线（与核心卡一致的最新值，灰色细虚线）
+    ctx.beginPath();
+    ctx.moveTo(PAD.l, yOf(last.yield));
+    ctx.lineTo(PAD.l + plotW, yOf(last.yield));
+    ctx.strokeStyle = 'rgba(212,169,78,0.35)';
+    ctx.setLineDash([2, 4]);
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // X 轴年份标签：每年 1 月处
+    ctx.fillStyle = 'rgba(139,148,158,0.9)';
+    ctx.textAlign = 'center';
+    let lastYear = '';
+    pts.forEach((p, i) => {
+      const yy = p.ym.slice(0, 4);
+      if (p.ym.slice(5, 7) === '01' && yy !== lastYear) {
+        ctx.fillText(yy, xOf(i, pts.length), cssH - 8);
+        lastYear = yy;
+      }
+    });
+    // 末尾补当年标签（若最后点非1月且与首个标签同年则跳过）
+    const endYear = last.ym.slice(0, 4);
+    if (endYear !== lastYear) {
+      ctx.fillText(endYear, xOf(pts.length - 1, pts.length), cssH - 8);
+      lastYear = endYear;
+    }
+    // 预期标签
+    if (exp) {
+      ctx.fillStyle = '#e57373';
+      ctx.fillText('预期', xOf(pts.length, pts.length + 1), cssH - 8);
     }
   },
 

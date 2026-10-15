@@ -75,13 +75,14 @@ async function handleOverview(event) {
     if (cached) return ok(cached);
   }
 
-  // 并行抓取五路数据
-  const [quote, financeAnnualAll, financeReportsAll, dividendRaw, consensus] = await Promise.all([
+  // 并行抓取六路数据
+  const [quote, financeAnnualAll, financeReportsAll, dividendRaw, consensus, monthlyCloses] = await Promise.all([
     ds.getQuote(code, market).catch(() => null),
     ds.getFinanceMain(code, 1).catch(() => []),   // 按年度
     ds.getFinanceMain(code, 0).catch(() => []),   // 按报告期
     ds.getDividendHistory(code).catch(() => []),
     ds.getAnalystConsensus(code).catch(() => null), // 机构一致预期（研报聚合）
+    ds.getMonthlyCloses(code, market, 66).catch(() => null), // 月末收盘价（股息率曲线）
   ]);
 
   if (!quote) return fail('行情获取失败，请稍后重试');
@@ -166,6 +167,11 @@ async function handleOverview(event) {
       medianByYear: consensus.medianByYear,
     } : null,
     prediction,
+    yieldCurve: div.calcYieldSeries(
+      implemented,
+      monthlyCloses,
+      prediction.enhanced ? prediction.enhanced.yields.neutral : (prediction.basic ? prediction.basic.yields.neutral : null)
+    ),
     health,
     meta: {
       perUnassignProfit: perUnassign,
