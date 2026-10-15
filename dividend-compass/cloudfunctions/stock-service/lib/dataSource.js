@@ -104,7 +104,7 @@ function buildSecid(code) {
 }
 
 async function quoteFromPush2(secid) {
-  const fields = 'f43,f44,f45,f46,f47,f48,f57,f58,f60,f84,f85,f86,f116,f117,f162,f163,f167,f168,f169,f170,f171,f292';
+  const fields = 'f43,f44,f45,f46,f47,f48,f57,f58,f60,f84,f85,f86,f116,f117,f127,f162,f163,f167,f168,f169,f170,f171,f292';
   const url = 'https://push2.eastmoney.com/api/qt/stock/get?ut=fa5fd1943c7b386f172d6893dbfba10b&invt=2&fltt=2&fields=' +
     fields + '&secid=' + encodeURIComponent(secid);
   const j = await getJSON(url);
@@ -132,6 +132,7 @@ async function quoteFromPush2(secid) {
     floatShares: d.f85,    // 流通股本(股)
     totalMarketCap: d.f116, // 总市值(元)
     floatMarketCap: d.f117,
+    industryName: d.f127 || null, // 所属行业（东财分类，如"白酒Ⅱ"）
   };
 }
 
