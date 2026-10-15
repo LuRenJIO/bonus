@@ -192,19 +192,37 @@
     </view>
 
     <!-- ============ 股息率阶梯 · 买入参考价 ============ -->
-    <view class="card" wx:if="{{ladder}}">
+    <view class="card" wx:if="{{d.quote.price}}">
       <view class="card-title">
         <text>股息率阶梯 · 买入参考价</text>
-        <text class="sub">按预期分红 {{ladder.dividend}} 元/股</text>
+        <text class="sub">对应股价 = 分红 ÷ 股息率</text>
       </view>
-      <view class="ladder-grid">
-        <view class="ld-cell {{index === ladder.closestIndex ? 'hit' : ''}}" wx:for="{{ladder.rows}}" wx:key="yield">
-          <text class="ld-y num">{{item.yield}}%</text>
+
+      <!-- 分红基准（默认预期分红，可修改） -->
+      <view class="ld-input-row">
+        <text class="ld-in-label">分红基准</text>
+        <view class="ld-in-box">
+          <input class="ld-in" type="digit" value="{{ladderInput}}" bindinput="onLadderInput" placeholder="输入每股分红" placeholder-class="ld-ph" />
+          <text class="ld-in-unit">元/股</text>
+        </view>
+        <view class="ld-reset" wx:if="{{ladderDefault}}" bindtap="onLadderReset">恢复预期</view>
+      </view>
+
+      <!-- 阶梯表格 -->
+      <block wx:if="{{ladder && ladder.rows.length}}">
+        <view class="ld-head">
+          <text class="ldh-y">股息率</text>
+          <text class="ldh-p">对应股价</text>
+          <text class="ldh-d">较现价</text>
+        </view>
+        <view class="ld-row {{index === ladder.closestIndex ? 'hit' : ''}}" wx:for="{{ladder.rows}}" wx:key="yield">
+          <text class="ld-y num">{{item.yield}}%<text wx:if="{{index === ladder.closestIndex}}" class="ld-hit-tag">现价</text></text>
           <text class="ld-p num">{{item.price}}元</text>
           <text class="ld-d num">{{item.diff}}%</text>
         </view>
-      </view>
-      <view class="ladder-tip">现价 {{d.quote.price}} 元 ≈ {{ladder.rows[ladder.closestIndex].yield}} 档 · 股价越低股息率越高 · 税前口径</view>
+        <view class="ladder-tip">现价 {{d.quote.price}} 元 ≈ {{ladder.rows[ladder.closestIndex].yield}} 档 · 股价越低股息率越高 · 税前口径</view>
+      </block>
+      <view wx:else class="no-div-tip">输入每股分红后自动计算 3%~9% 各档对应股价</view>
     </view>
 
     <!-- ============ 股息率曲线 ============ -->

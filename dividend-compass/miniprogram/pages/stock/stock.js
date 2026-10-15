@@ -9,7 +9,9 @@ Page({
     loading: true,
     error: '',
     d: null,            // overview 聚合数据
-    ladder: null,       // 股息率阶梯数据
+    ladder: null,       // 股息率阶梯计算结果
+    ladderInput: '',    // 分红基准输入框内容（元/股）
+    ladderDefault: null,// 默认预期分红（"恢复预期"按钮用）
     predMode: 'basic',  // basic=多模型区间 | enhanced=盈利修正
     isFav: false,
     favBusy: false,
@@ -43,7 +45,15 @@ Page({
         refresh: force === true,
       });
       if (d.name) wx.setNavigationBarTitle({ title: d.name });
-      this.setData({ d: d, loading: false, error: '', ladder: this.buildLadderData(d) });
+      const ld = this.buildLadderData(d);
+      this.setData({
+        d: d,
+        loading: false,
+        error: '',
+        ladder: ld ? ld.ladder : null,
+        ladderInput: ld ? ld.input : '',
+        ladderDefault: ld ? ld.def : null,
+      });
       util.addRecent({ code: this.data.code, name: d.name || this.data.name, market: this.data.market });
       if (d.yieldCurve && d.yieldCurve.points && d.yieldCurve.points.length >= 2) {
         this.drawYieldChart();   // setData 完成后 canvas 节点已就绪
@@ -53,14 +63,39 @@ Page({
     }
   },
 
-  /* ---------- 股息率阶梯 ---------- */
+  /* ---------- 股息率阶梯（分红基准可编辑，默认预期分红） ---------- */
   buildLadderData(d) {
-    if (!d || !d.prediction || !d.quote || !d.quote.price) return null;
+    if (!d || !d.quote || !d.quote.price) return null;
     const p = d.prediction;
-    // 优先用盈利修正中性预测，无增强模式时退回多模型中性
-    const div = (p.enhanced && p.enhanced.range) ? p.enhanced.range.neutral : (p.basic ? p.basic.range.neutral : null);
-    if (!div) return null;
-    return util.buildLadder(div, d.quote.price);
+    // 默认基准：盈利修正中性预测，退回多模型中性
+    const def = (p && p.enhanced && p.enhanced.range) ? p.enhanced.range.neutral
+      : (p && p.basic ? p.basic.range.neutral : null);
+    const ok = def !== null && isFinite(def) && def > 0;
+    return {
+      def: ok ? def : null,
+      input: ok ? (Math.round(def * 100) / 100).toString() : '',
+      ladder: ok ? util.buildLadder(def, d.quote.price) : null,
+    };
+  },
+
+  onLadderInput(e) {
+    const raw = (e.detail.value || '').trim();
+    const price = this.data.d && this.data.d.quote && this.data.d.quote.price;
+    const patch = { ladderInput: raw };
+    const v = parseFloat(raw);
+    if (price && isFinite(v) && v > 0) {
+      patch.ladder = util.buildLadder(v, price);   // 非法输入时保留上一次合法结果
+    }
+    this.setData(patch);
+  },
+
+  onLadderReset() {
+    const price = this.data.d && this.data.d.quote && this.data.d.quote.price;
+    if (!price || !this.data.ladderDefault) return;
+    this.setData({
+      ladderInput: (Math.round(this.data.ladderDefault * 100) / 100).toString(),
+      ladder: util.buildLadder(this.data.ladderDefault, price),
+    });
   },
 
   /* ---------- 股息率曲线（Canvas 2D） ---------- */

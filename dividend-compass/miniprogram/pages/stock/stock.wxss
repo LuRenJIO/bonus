@@ -230,30 +230,65 @@
 .c-yield { flex: 1; text-align: right; }
 
 /* ================= 股息率阶梯 ================= */
-.ladder-grid {
+.ld-input-row {
   display: flex;
-  flex-wrap: wrap;
-  gap: 12rpx;
-}
-.ld-cell {
-  width: calc((100% - 24rpx) / 3);
-  box-sizing: border-box;
-  background: var(--bg);
-  border: 1rpx solid transparent;
-  border-radius: 12rpx;
-  padding: 14rpx 0 10rpx;
-  display: flex;
-  flex-direction: column;
   align-items: center;
+  background: var(--bg);
+  border-radius: 12rpx;
+  padding: 14rpx 20rpx;
+  margin-bottom: 20rpx;
 }
-.ld-cell.hit {
-  background: rgba(212, 169, 78, 0.12);
-  border-color: rgba(212, 169, 78, 0.55);
+.ld-in-label { font-size: 22rpx; color: var(--text-dim); margin-right: 20rpx; }
+.ld-in-box {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  background: rgba(212, 169, 78, 0.07);
+  border: 1rpx solid rgba(212, 169, 78, 0.3);
+  border-radius: 10rpx;
+  padding: 10rpx 16rpx;
 }
-.ld-y { font-size: 26rpx; font-weight: 700; color: var(--gold); }
-.ld-p { font-size: 24rpx; font-weight: 600; margin-top: 4rpx; }
-.ld-d { font-size: 18rpx; color: var(--text-dim); margin-top: 2rpx; }
-.ld-cell.hit .ld-y { color: #e8b95f; }
+.ld-in { flex: 1; font-size: 28rpx; font-weight: 600; color: #e8b95f; height: 40rpx; line-height: 40rpx; }
+.ld-ph { color: rgba(139, 148, 158, 0.6); font-weight: 400; }
+.ld-in-unit { font-size: 22rpx; color: var(--text-dim); margin-left: 8rpx; }
+.ld-reset {
+  font-size: 22rpx;
+  color: #e8b95f;
+  margin-left: 20rpx;
+  padding: 6rpx 0 6rpx 20rpx;
+  border-left: 1rpx solid rgba(148, 163, 184, 0.25);
+}
+.ld-head { display: flex; align-items: center; padding: 4rpx 12rpx 10rpx; }
+.ldh-y { flex: 1; font-size: 20rpx; color: var(--text-dim); }
+.ldh-p { flex: 1.3; font-size: 20rpx; color: var(--text-dim); text-align: right; }
+.ldh-d { flex: 0.9; font-size: 20rpx; color: var(--text-dim); text-align: right; }
+.ld-row {
+  display: flex;
+  align-items: center;
+  padding: 11rpx 12rpx;
+  border-radius: 10rpx;
+}
+.ld-row:nth-child(odd) { background: rgba(148, 163, 184, 0.05); }
+.ld-row.hit {
+  background: rgba(212, 169, 78, 0.14);
+  box-shadow: inset 3rpx 0 0 #d4a94e;
+}
+.ld-y { flex: 1; font-size: 26rpx; font-weight: 700; color: var(--gold); }
+.ld-hit-tag {
+  display: inline-block;
+  vertical-align: 4rpx;
+  margin-left: 10rpx;
+  padding: 0 10rpx;
+  height: 30rpx;
+  line-height: 30rpx;
+  font-size: 18rpx;
+  font-weight: 600;
+  color: #1a1d24;
+  background: #d4a94e;
+  border-radius: 8rpx;
+}
+.ld-p { flex: 1.3; font-size: 26rpx; font-weight: 600; text-align: right; }
+.ld-d { flex: 0.9; font-size: 22rpx; color: var(--text-dim); text-align: right; }
 .ladder-tip {
   margin-top: 16rpx;
   font-size: 20rpx;
