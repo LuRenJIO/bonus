@@ -243,12 +243,13 @@
 .lrg-val { font-size: 26rpx; font-weight: 600; margin-top: 8rpx; }
 .lrg-sub { font-size: 20rpx; margin-top: 4rpx; }
 
-.f-year { width: 100rpx; }
-.f-rev { width: 150rpx; }
-.f-g { width: 100rpx; text-align: right; }
-.f-np { width: 140rpx; }
-.f-g2 { width: 100rpx; text-align: right; }
-.f-roe { flex: 1; text-align: right; }
+/* 年度财务表：固定列宽 + 禁止换行，确保涨跌色整值生效（换行会导致颜色视觉断裂） */
+.f-year { width: 84rpx; white-space: nowrap; }
+.f-rev { width: 128rpx; white-space: nowrap; }
+.f-g { width: 104rpx; text-align: right; white-space: nowrap; }
+.f-np { width: 120rpx; white-space: nowrap; }
+.f-g2 { width: 104rpx; text-align: right; white-space: nowrap; }
+.f-roe { width: 70rpx; text-align: right; white-space: nowrap; }
 
 /* ================= 体检 ================= */
 .health-head {

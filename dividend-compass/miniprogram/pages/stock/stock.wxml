@@ -62,8 +62,8 @@
         </view>
         <view class="yield-right" wx:if="{{d.dividend.annual.length}}">
           <view class="yr-item">
-            <text class="yr-label">{{d.dividend.annual[d.dividend.annual.length-1].year}}年度</text>
-            <text class="yr-val num">{{d.dividend.annual[d.dividend.annual.length-1].yieldNow === null ? '--' : d.dividend.annual[d.dividend.annual.length-1].yieldNow + '%'}}</text>
+            <text class="yr-label">{{d.dividend.annual[0].year}}年度</text>
+            <text class="yr-val num">{{d.dividend.annual[0].yieldNow === null ? '--' : d.dividend.annual[0].yieldNow + '%'}}</text>
           </view>
         </view>
       </view>
@@ -95,7 +95,7 @@
       <view class="card-title">
         <text>{{d.prediction.nextPeriod}}预期分红</text>
         <view class="pred-tabs">
-          <view class="pred-tab {{predMode === 'basic' ? 'active' : ''}}" data-mode="basic" bindtap="onSwitchPredMode">双模型区间</view>
+          <view class="pred-tab {{predMode === 'basic' ? 'active' : ''}}" data-mode="basic" bindtap="onSwitchPredMode">多模型区间</view>
           <view class="pred-tab {{predMode === 'enhanced' ? 'active' : ''}}" data-mode="enhanced" bindtap="onSwitchPredMode">盈利修正</view>
         </view>
       </view>
@@ -132,6 +132,11 @@
             <text class="model-val num">{{fmt.fmtNum(d.prediction.basic.modelB.value, 3)}}元</text>
           </view>
           <view class="model-note" wx:if="{{d.prediction.basic.modelB}}">近3年均值派息率 {{fmt.fmtNum(d.prediction.basic.modelB.payoutRatio, 1)}}% × 预测净利润（增速 {{fmt.signed(d.prediction.basic.modelB.profitGrowth, 1)}}%）</view>
+          <view class="model-row" wx:if="{{d.prediction.basic.modelC}}">
+            <text class="model-name">模型C 机构预期</text>
+            <text class="model-val num">{{fmt.fmtNum(d.prediction.basic.modelC.value, 3)}}元</text>
+          </view>
+          <view class="model-note" wx:if="{{d.prediction.basic.modelC}}">近1年 {{d.prediction.basic.modelC.orgCount}} 篇研报一致预期EPS {{fmt.fmtNum(d.prediction.basic.modelC.eps, 2)}}元 × 均值派息率 {{fmt.fmtNum(d.prediction.basic.modelC.payoutRatio, 1)}}%</view>
         </view>
       </block>
 
@@ -254,9 +259,9 @@
       <view class="table-row" wx:for="{{d.finance.annual}}" wx:key="reportDate">
         <text class="f-year num">{{fmt.year(item.reportDate)}}</text>
         <text class="f-rev num">{{fmt.fmtYi(item.revenue, 0)}}</text>
-        <text class="f-g num {{fmt.cls(item.revenueYoy)}}">{{fmt.signed(item.revenueYoy, 1)}}</text>
+        <text class="f-g num {{fmt.cls(item.revenueYoy)}}">{{fmt.signed(item.revenueYoy, 1)}}%</text>
         <text class="f-np num">{{fmt.fmtYi(item.parentNetProfit, 0)}}</text>
-        <text class="f-g2 num {{fmt.cls(item.netProfitYoy)}}">{{fmt.signed(item.netProfitYoy, 1)}}</text>
+        <text class="f-g2 num {{fmt.cls(item.netProfitYoy)}}">{{fmt.signed(item.netProfitYoy, 1)}}%</text>
         <text class="f-roe num">{{fmt.fmtNum(item.roeWeighted, 1)}}</text>
       </view>
     </view>

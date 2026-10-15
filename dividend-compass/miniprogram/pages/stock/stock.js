@@ -26,16 +26,20 @@ Page({
   },
 
   onPullDownRefresh() {
-    this.loadOverview().then(() => wx.stopPullDownRefresh());
+    this.loadOverview(true).then(() => wx.stopPullDownRefresh());
   },
 
-  async loadOverview() {
+  /**
+   * @param force true=绕过云函数缓存强制刷新（刷新按钮/下拉刷新用）
+   */
+  async loadOverview(force) {
     if (!this.data.d) this.setData({ loading: true, error: '' });
     try {
       const d = await util.callService('overview', {
         code: this.data.code,
         market: this.data.market,
         name: this.data.name,
+        refresh: force === true,
       });
       if (d.name) wx.setNavigationBarTitle({ title: d.name });
       this.setData({ d: d, loading: false, error: '' });
@@ -82,8 +86,8 @@ Page({
   },
 
   onRetry() {
-    // 已有数据时静默刷新（保留页面内容），首次加载才显示全屏 loading
-    this.loadOverview();
+    // 已有数据时静默强制刷新（绕过云函数缓存，保留页面内容），首次加载才显示全屏 loading
+    this.loadOverview(true);
   },
 
   onShareAppMessage() {

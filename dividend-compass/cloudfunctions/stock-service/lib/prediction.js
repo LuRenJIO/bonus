@@ -1,13 +1,15 @@
 /**
  * 预期分红与预期股息率预测
  *
- * 模式一（双模型区间预测）：
+ * 模式一（多模型区间预测）：
  *   模型A 分红趋势外推：近3~5个分红年度每股分红 CAGR 外推下一期
  *   模型B 派息率×净利润：近3年平均派息率 × 预测净利润（净利3年CAGR外推）÷ 总股本
+ *   模型C 机构一致预期：券商研报一致预期 EPS（已综合最新业绩/财报/行业景气）× 均值派息率
  *   输出 保守/中性/乐观 三档分红及对应股息率
  *
- * 模式二（盈利修正预测）：在双模型基础上叠加修正因子：
+ * 模式二（盈利修正预测）：在多模型基础上叠加修正因子：
  *   ① 最新报告期增速加权（近期动量）② 盈利稳定性 ③ 现金流覆盖 ④ 分红连续性
+ *   ⑤ 机构一致预期 ⑥ 行业与机构态度
  *   输出修正后区间 + 因子明细 + 信心度评分
  */
 
@@ -44,8 +46,9 @@ function std(arr) {
  * @param financeReports 报告期财务（降序，含最新一期）
  * @param price 最新股价
  * @param totalShares 最新总股本（股）
+ * @param consensus 机构一致预期（dataSource.getAnalystConsensus 结果，可为 null）
  */
-function predict(annualAgg, payoutRatios, financeAnnual, financeReports, price, totalShares) {
+function predict(annualAgg, payoutRatios, financeAnnual, financeReports, price, totalShares, consensus) {
   const result = {
     hasEnoughData: false,
     nextPeriod: null,          // 预测目标：下一分红年度
@@ -111,10 +114,25 @@ function predict(annualAgg, payoutRatios, financeAnnual, financeReports, price, 
     modelB = (basePR * nextProfit) / shares;
   }
 
-  // ---------- 模式一：双模型区间 ----------
+  // ---------- 模型C：机构一致预期 EPS × 派息率 ----------
+  // 研报一致预期已综合最新业绩、财报与行业景气，是专业机构视角的盈利预测
+  let modelC = null;
+  let modelCBase = null;
+  let consensusEps = null;   // 预测目标年度的一致预期 EPS
+  if (consensus && consensus.medianByYear) {
+    consensusEps = consensus.medianByYear[nextPeriodYear] || null;
+    if (consensusEps && prValues.length) {
+      const pr = clamp(mean(prValues), 0.05, 1.5);
+      modelCBase = { eps: consensusEps, payoutRatio: pr, orgCount: consensus.count };
+      modelC = consensusEps * pr;
+    }
+  }
+
+  // ---------- 模式一：多模型区间 ----------
   let conservative, neutral, optimistic;
   const candidates = [modelA];
   if (modelB !== null && isFinite(modelB) && modelB > 0) candidates.push(modelB);
+  if (modelC !== null && isFinite(modelC) && modelC > 0) candidates.push(modelC);
   if (!candidates.length) {
     result.notes.push('有效预测数据不足');
     return result;
@@ -143,6 +161,13 @@ function predict(annualAgg, payoutRatios, financeAnnual, financeReports, price, 
       profitGrowth: +(modelBBase.profitGrowth * 100).toFixed(2),
       nextProfit: modelBBase.nextProfit,
       desc: '均值派息率 × 预测净利润',
+    } : null,
+    modelC: modelCBase ? {
+      value: +modelC.toFixed(4),
+      eps: modelCBase.eps,
+      payoutRatio: +(modelCBase.payoutRatio * 100).toFixed(2),
+      orgCount: modelCBase.orgCount,
+      desc: '机构一致预期EPS × 均值派息率',
     } : null,
     range: {
       conservative: +conservative.toFixed(4),
@@ -228,6 +253,49 @@ function predict(annualAgg, payoutRatios, financeAnnual, financeReports, price, 
     detail: continuityNote,
   });
 
+  // ⑤ 机构一致预期：券商研报一致预期 EPS 与趋势外推的差异修正
+  if (consensusEps !== null && modelBBase) {
+    // 模型B隐含EPS = 预测净利润/总股本；与机构一致预期对比
+    const impliedEps = shares > 0 ? modelBBase.nextProfit / shares : null;
+    if (impliedEps && impliedEps > 0) {
+      const gap = consensusEps / impliedEps - 1;   // 机构预期相对趋势外推的偏离
+      const cappedGap = clamp(gap, -0.25, 0.25);   // 单因子最多 ±25% 修正
+      profitAdjust *= (1 + cappedGap);
+      factors.push({
+        name: '机构一致预期',
+        value: nextPeriodYear + '年一致预期EPS ' + consensusEps.toFixed(2) + '元（' + consensus.count + '篇研报中位数）',
+        effect: cappedGap > 0.005 ? '+' : (cappedGap < -0.005 ? '-' : '0'),
+        detail: '机构预期较盈利趋势外推' + (gap >= 0 ? '高' : '低') + ' ' + Math.abs(gap * 100).toFixed(1) +
+          '%，已综合最新业绩、财报与行业景气，按此修正盈利预期',
+      });
+    }
+  }
+
+  // ⑥ 行业与机构态度：所属行业 + 近1年研报评级分布
+  if (consensus && consensus.ratings) {
+    const rt = consensus.ratings;
+    const total = rt.buy + rt.increase + rt.neutral + rt.reduce + rt.sell;
+    if (total >= 3) {
+      const positiveRatio = (rt.buy + rt.increase) / total;
+      const negativeRatio = (rt.reduce + rt.sell) / total;
+      // 机构态度：正面占比高小幅上调，负面出现明显下调
+      let attitudeFactor = 1;
+      if (positiveRatio >= 0.8 && negativeRatio === 0) attitudeFactor = 1.03;
+      else if (negativeRatio > 0.2) attitudeFactor = 0.90;
+      else if (negativeRatio > 0) attitudeFactor = 0.96;
+      rangeAdjust *= attitudeFactor;
+      const indu = consensus.industryName || '';
+      factors.push({
+        name: '行业与机构态度',
+        value: (indu ? indu + ' · ' : '') + '买入' + rt.buy + '/增持' + rt.increase + '/中性' + rt.neutral +
+          (rt.reduce || rt.sell ? '/减持卖出' + (rt.reduce + rt.sell) : '') + '（近1年）',
+        effect: attitudeFactor > 1 ? '+' : (attitudeFactor < 1 ? '-' : '0'),
+        detail: '近1年' + total + '篇研报中' + (positiveRatio * 100).toFixed(0) + '%为正面评级' +
+          (negativeRatio > 0 ? '，存在负面评级，预测收紧' : '，机构态度积极'),
+      });
+    }
+  }
+
   // 修正后的区间
   const eConservative = conservative * profitAdjust * rangeAdjust;
   const eNeutral = neutral * profitAdjust * rangeAdjust;
@@ -240,6 +308,11 @@ function predict(annualAgg, payoutRatios, financeAnnual, financeReports, price, 
   if (gStd !== null && gStd < 15) confidence += 8;
   if (cfRatio !== null && cfRatio >= 1) confidence += 7;
   if (prValues.length >= 3 && std(prValues) < 0.15) confidence += 7;
+  if (consensus && consensus.count >= 5) confidence += 6;          // 机构覆盖充分
+  if (consensusEps !== null && modelBBase && modelBBase.nextProfit > 0 && shares > 0) {
+    const impliedEps = modelBBase.nextProfit / shares;
+    if (impliedEps > 0 && Math.abs(consensusEps / impliedEps - 1) < 0.15) confidence += 4; // 机构预期与趋势相互印证
+  }
   confidence = Math.round(clamp(confidence, 30, 95));
 
   result.enhanced = {

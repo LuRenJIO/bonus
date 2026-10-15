@@ -69,15 +69,19 @@ async function handleOverview(event) {
   const market = event.market || (/^(6|9)/.test(code) ? 'SH' : 'SZ');
 
   const ck = 'ov:' + code;
-  const cached = cacheGet(ck, 5 * 60 * 1000);
-  if (cached) return ok(cached);
+  // 前端显式刷新（refresh=true）时绕过缓存，保证行情为最新
+  if (!event.refresh) {
+    const cached = cacheGet(ck, 5 * 60 * 1000);
+    if (cached) return ok(cached);
+  }
 
-  // 并行抓取四路数据
-  const [quote, financeAnnualAll, financeReportsAll, dividendRaw] = await Promise.all([
+  // 并行抓取五路数据
+  const [quote, financeAnnualAll, financeReportsAll, dividendRaw, consensus] = await Promise.all([
     ds.getQuote(code, market).catch(() => null),
     ds.getFinanceMain(code, 1).catch(() => []),   // 按年度
     ds.getFinanceMain(code, 0).catch(() => []),   // 按报告期
     ds.getDividendHistory(code).catch(() => []),
+    ds.getAnalystConsensus(code).catch(() => null), // 机构一致预期（研报聚合）
   ]);
 
   if (!quote) return fail('行情获取失败，请稍后重试');
@@ -92,7 +96,7 @@ async function handleOverview(event) {
   const annualAgg = div.aggregateAnnual(implemented);
   const payoutRatios = div.calcPayoutRatios(annualAgg, financeAnnualAll);
 
-  // 年度视图合并（年度分红 + 派息率 + 当年净利）
+  // 年度视图合并（年度分红 + 派息率 + 当年净利），按时间由近到远排列
   const annualView = annualAgg.slice(-6).map((a) => {
     const pr = payoutRatios.find((p) => p.year === a.year);
     return {
@@ -104,7 +108,7 @@ async function handleOverview(event) {
       yieldNow: quote.price ? +((a.perShare / quote.price) * 100).toFixed(2) : null, // 该年度分红/现价
       records: a.records,
     };
-  });
+  }).reverse();
 
   const ttmYield = quote.price && ttm.perShare > 0 ? +((ttm.perShare / quote.price) * 100).toFixed(2) : null;
 
@@ -115,10 +119,10 @@ async function handleOverview(event) {
   }
   const latestDebtRatio = latestReport && isNum(latestReport.debtRatio) ? latestReport.debtRatio : null;
 
-  // 预测（双模型 + 盈利修正）
+  // 预测（多模型区间 + 盈利修正，含机构一致预期）
   const totalShares = quote.totalShares || (implemented[0] && implemented[0].totalShares) || null;
   const prediction = pred.predict(
-    annualAgg, payoutRatios, financeAnnual, financeReports, quote.price, totalShares
+    annualAgg, payoutRatios, financeAnnual, financeReports, quote.price, totalShares, consensus
   );
 
   // 分红可持续性体检
@@ -154,6 +158,13 @@ async function handleOverview(event) {
       annual: financeAnnual.slice(0, 5),
       latest: latestReport,
     },
+    consensus: consensus ? {           // 机构一致预期摘要（可能为 null：无研报覆盖）
+      count: consensus.count,
+      industryName: consensus.industryName || quote.industryName || null,
+      latestDate: consensus.latestDate,
+      ratings: consensus.ratings,
+      medianByYear: consensus.medianByYear,
+    } : null,
     prediction,
     health,
     meta: {

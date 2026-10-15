@@ -282,7 +282,70 @@ async function getFinanceMain(code, type) {
   }));
 }
 
-/* ---------------- 4. 分红送配历史（东财 datacenter） ---------------- */
+/* ---------------- 4. 机构一致预期（东财研报列表，近1年） ---------------- */
+
+/**
+ * 聚合机构研报的一致预期 EPS 与评级分布
+ * 研报的 predictThisYearEps / predictNextYearEps 以发布年份为基准：
+ * 发布年份 == Y 时，"今年"=Y、"次年"=Y+1，据此对齐到自然年
+ * @returns {count, epsByYear: {2026: 65.1, 2027: 68.2}, medianEps, ratings, industryName, latestDate}
+ */
+async function getAnalystConsensus(code) {
+  const end = new Date();
+  const begin = new Date(end.getTime() - 365 * 24 * 3600 * 1000);
+  const fmt = (d) => d.toISOString().slice(0, 10);
+  const url = 'https://reportapi.eastmoney.com/report/list?pageSize=100&industry=*&rating=*&ratingChange=*' +
+    '&beginTime=' + fmt(begin) + '&endTime=' + fmt(end) + '&pageNo=1&qType=0&code=' + code;
+  const j = await getJSON(url, { Referer: 'https://data.eastmoney.com/report/' });
+  const rows = (j && j.data) || [];
+  if (!rows.length) return null;
+
+  const epsByYear = {};   // 自然年 → EPS 预测数组
+  const ratings = { buy: 0, increase: 0, neutral: 0, reduce: 0, sell: 0 };
+  let industryName = null;
+  let latestDate = '';
+
+  rows.forEach((r) => {
+    const pubYear = parseInt((r.publishDate || '').slice(0, 4), 10);
+    if (!pubYear) return;
+    // 按发布年份把"今年/次年"预测对齐到自然年
+    if (r.predictThisYearEps) pushEps(epsByYear, pubYear, r.predictThisYearEps);
+    if (r.predictNextYearEps) pushEps(epsByYear, pubYear + 1, r.predictNextYearEps);
+    // 评级分布
+    const rt = r.emRatingName || '';
+    if (rt.indexOf('买入') >= 0) ratings.buy++;
+    else if (rt.indexOf('增持') >= 0 || rt.indexOf('推荐') >= 0 || rt.indexOf('优于') >= 0) ratings.increase++;
+    else if (rt.indexOf('中性') >= 0 || rt.indexOf('持有') >= 0) ratings.neutral++;
+    else if (rt.indexOf('减持') >= 0) ratings.reduce++;
+    else if (rt.indexOf('卖出') >= 0) ratings.sell++;
+    if (!industryName && r.indvInduName) industryName = r.indvInduName;
+    if (r.publishDate > latestDate) latestDate = (r.publishDate || '').slice(0, 10);
+  });
+
+  // 各年中位数
+  const medianByYear = {};
+  Object.keys(epsByYear).forEach((y) => {
+    const arr = epsByYear[y].filter((v) => isFinite(v) && v > 0).sort((a, b) => a - b);
+    if (arr.length) medianByYear[y] = +arr[Math.floor(arr.length / 2)].toFixed(4);
+  });
+
+  return {
+    count: rows.length,
+    medianByYear,         // 如 {"2026":65.1, "2027":68.2}
+    ratings,              // 评级分布
+    industryName,         // 所属行业（如"白酒Ⅱ"）
+    latestDate,           // 最新研报日期
+  };
+}
+
+function pushEps(map, year, val) {
+  const v = parseFloat(val);
+  if (!isFinite(v) || v <= 0) return;
+  if (!map[year]) map[year] = [];
+  map[year].push(v);
+}
+
+/* ---------------- 5. 分红送配历史（东财 datacenter） ---------------- */
 
 async function getDividendHistory(code) {
   const url = 'https://datacenter-web.eastmoney.com/api/data/v1/get?reportName=RPT_SHAREBONUS_DET' +
@@ -315,6 +378,7 @@ module.exports = {
   getQuote: withRetry(getQuote, 2),
   quoteBatch: withRetry(quoteBatch, 2),
   getFinanceMain: withRetry(getFinanceMain, 2),
+  getAnalystConsensus: withRetry(getAnalystConsensus, 1),
   getDividendHistory: withRetry(getDividendHistory, 2),
   buildSecid,
 };

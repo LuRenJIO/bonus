@@ -60,13 +60,16 @@ function assert(cond, msg) {
     assert(d.dividend.ttm.perShare > 0, 'TTM每股分红 > 0: ' + d.dividend.ttm.perShare + '元');
     assert(d.dividend.ttm.yield > 0, 'TTM股息率: ' + d.dividend.ttm.yield + '%');
 
-    // 年度分红视图
+    // 年度分红视图（应按时间由近到远排列）
     console.log('\n  [年度分红视图]');
     d.dividend.annual.forEach((a) => {
       console.log('    ' + a.year + ': 每股' + a.perShare + '元 (' + a.times + '次)  派息率: ' +
         (a.payoutRatio === null ? '-' : a.payoutRatio + '%') + '  以现价计股息率: ' + a.yieldNow + '%');
     });
     assert(d.dividend.annual.length >= 3, '年度分红数据 >= 3年');
+    const yearsDesc = d.dividend.annual.map((a) => a.year);
+    const sortedDesc = yearsDesc.slice().sort((a, b) => b - a);
+    assert(JSON.stringify(yearsDesc) === JSON.stringify(sortedDesc), '历年分红按时间由近到远排列: ' + yearsDesc.join(' > '));
 
     // 已公告未实施
     if (d.dividend.pending.length) {
@@ -87,8 +90,9 @@ function assert(cond, msg) {
     const p = d.prediction;
     console.log('\n  [预测目标] ' + p.nextPeriod);
     if (p.basic) {
-      console.log('  [双模型] 模型A(趋势): ' + p.basic.modelA.value + '元 (增速' + p.basic.modelA.divGrowth + '%)');
+      console.log('  [多模型] 模型A(趋势): ' + p.basic.modelA.value + '元 (增速' + p.basic.modelA.divGrowth + '%)');
       if (p.basic.modelB) console.log('           模型B(派息率×净利): ' + p.basic.modelB.value + '元 (派息率' + p.basic.modelB.payoutRatio + '%, 净利增速' + p.basic.modelB.profitGrowth + '%)');
+      if (p.basic.modelC) console.log('           模型C(机构预期): ' + p.basic.modelC.value + '元 (一致预期EPS ' + p.basic.modelC.eps + '元 × 派息率' + p.basic.modelC.payoutRatio + '%, ' + p.basic.modelC.orgCount + '篇研报)');
       console.log('           区间: 保守' + p.basic.range.conservative + ' / 中性' + p.basic.range.neutral + ' / 乐观' + p.basic.range.optimistic + '元');
       console.log('           预期股息率: ' + p.basic.yields.conservative + '% / ' + p.basic.yields.neutral + '% / ' + p.basic.yields.optimistic + '%');
     }
@@ -99,8 +103,21 @@ function assert(cond, msg) {
       p.enhanced.factors.forEach((f) => console.log('               - ' + f.name + ': ' + f.value + ' (' + f.effect + ')'));
     }
     assert(p.hasEnoughData === true, '预测数据充足');
-    assert(p.basic && p.basic.range.neutral > 0, '双模型中性预测 > 0');
+    assert(p.basic && p.basic.range.neutral > 0, '多模型中性预测 > 0');
     assert(p.enhanced && p.enhanced.range.neutral > 0, '盈利修正预测 > 0');
+    // 机构一致预期（茅台研报覆盖充分，应产出模型C与一致预期因子）
+    if (d.consensus) {
+      console.log('  [机构一致预期] ' + (d.consensus.industryName || '-') + ' · 近1年' + d.consensus.count + '篇 · 各年中位数EPS: ' + JSON.stringify(d.consensus.medianByYear) + ' · 评级: ' + JSON.stringify(d.consensus.ratings));
+      assert(p.basic.modelC !== null, '模型C(机构预期)已产出');
+      assert(p.enhanced.factors.some((f) => f.name === '机构一致预期'), '增强模式含因子⑤机构一致预期');
+      assert(p.enhanced.factors.some((f) => f.name === '行业与机构态度'), '增强模式含因子⑥行业与机构态度');
+    }
+
+    // 强制刷新：两次 overview，第二次带 refresh=true，返回的 calcTime 应不同（绕过5分钟缓存）
+    const r2 = await fn.main({ action: 'overview', code: '600519' });
+    assert(r2.data.meta.calcTime === d.meta.calcTime, '不带 refresh 时命中缓存（calcTime 相同）');
+    const r3 = await fn.main({ action: 'overview', code: '600519', refresh: true });
+    assert(r3.data.meta.calcTime !== d.meta.calcTime, 'refresh=true 绕过缓存重新计算（calcTime 已更新）');
 
     // 体检
     const h = d.health;
