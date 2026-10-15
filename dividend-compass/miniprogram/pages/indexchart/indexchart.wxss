@@ -1,0 +1,69 @@
+/* 指数走势页 */
+.page { min-height: 100vh; padding-bottom: 60rpx; }
+.footer-tip {
+  padding: 20rpx 40rpx;
+  font-size: 20rpx;
+  color: var(--text-dim);
+  line-height: 1.7;
+  text-align: center;
+}
+
+/* 指数头部 */
+.head-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 30rpx 28rpx;
+}
+.h-name { font-size: 34rpx; font-weight: 700; }
+.h-code { font-size: 20rpx; color: var(--text-dim); margin-top: 6rpx; }
+.h-right { text-align: right; }
+.h-price { font-size: 40rpx; font-weight: 700; }
+.h-chg { font-size: 26rpx; margin-top: 4rpx; }
+
+/* 模式切换（与日历页同风格） */
+.chart-tabs {
+  display: flex;
+  background: #171b22;
+  border-radius: 14rpx;
+  padding: 6rpx;
+  margin: 0 24rpx 8rpx;
+}
+.ct-tab {
+  flex: 1;
+  text-align: center;
+  font-size: 26rpx;
+  color: var(--text-dim);
+  padding: 14rpx 0;
+  border-radius: 10rpx;
+}
+.ct-tab.on {
+  background: rgba(212, 169, 78, 0.15);
+  color: #e8b95f;
+  font-weight: 600;
+}
+
+/* 区间切换 */
+.range-tabs { display: flex; gap: 12rpx; margin-bottom: 12rpx; }
+.rt {
+  font-size: 20rpx;
+  padding: 6rpx 18rpx;
+  border-radius: 8rpx;
+  color: var(--text-dim);
+  background: rgba(148, 163, 184, 0.10);
+}
+.rt.on {
+  color: #e8b95f;
+  background: rgba(212, 169, 78, 0.15);
+  font-weight: 600;
+}
+
+/* 画布 */
+.cv-wrap { width: 100%; }
+.cv { width: 100%; height: 460rpx; }
+.cv-note {
+  font-size: 20rpx;
+  color: var(--text-dim);
+  margin-top: 12rpx;
+  line-height: 1.6;
+}

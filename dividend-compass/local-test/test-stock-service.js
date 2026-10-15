@@ -311,6 +311,34 @@ function assert(cond, msg) {
     pass++;
   } catch (e) { console.log('  ✗ ' + e.message); fail++; }
 
+  // ---------- 10. 指数走势（分时/历史） ----------
+  console.log('\n========== 10. 指数走势 ==========');
+  try {
+    const rM = await fn.main({ action: 'indexChart', code: '000922', market: 'SH', mode: 'minute' });
+    assert(rM.success, '分时成功');
+    assert(rM.data.preClose > 0, '昨收: ' + rM.data.preClose);
+    assert(rM.data.points.length >= 100, '分时点位 >= 100: ' + rM.data.points.length);
+    assert(/^\d{2}:\d{2}$/.test(rM.data.points[0].t), '时间格式: ' + rM.data.points[0].t);
+    assert(rM.data.points.every((p) => p.price > 0), '分时价格均为正');
+    console.log('  [分时] ' + rM.data.points.length + ' 点 (' + rM.data.points[0].t + '~' + rM.data.points[rM.data.points.length - 1].t + ') 昨收 ' + rM.data.preClose);
+
+    const r1 = await fn.main({ action: 'indexChart', code: '000922', market: 'SH', mode: 'history', range: '1y' });
+    assert(r1.success && r1.data.points.length >= 200, '近1年日线 >= 200 点: ' + r1.data.points.length);
+    assert(/^\d{4}-\d{2}-\d{2}$/.test(r1.data.points[0].d), '日K日期格式');
+    console.log('  [近1年] ' + r1.data.points.length + ' 点 (' + r1.data.points[0].d + ' ~ ' + r1.data.points[r1.data.points.length - 1].d + ')');
+
+    const r5 = await fn.main({ action: 'indexChart', code: '000922', market: 'SH', mode: 'history', range: '5y' });
+    assert(r5.success && r5.data.points.length >= 50, '近5年月线 >= 50 点: ' + r5.data.points.length);
+    const p0 = r5.data.points[0].price, pN = r5.data.points[r5.data.points.length - 1].price;
+    assert(p0 > 0 && pN > 0, '月线价格有效');
+    console.log('  [近5年] ' + r5.data.points.length + ' 点 (' + r5.data.points[0].d + ' ~ ' + r5.data.points[r5.data.points.length - 1].d + ') 区间 ' + (((pN / p0 - 1) * 100).toFixed(1)) + '%');
+
+    // 缓存一致性
+    const rAgain = await fn.main({ action: 'indexChart', code: '000922', market: 'SH', mode: 'history', range: '5y' });
+    assert(rAgain.data.points.length === r5.data.points.length, '12小时缓存命中一致');
+    pass++;
+  } catch (e) { console.log('  ✗ ' + e.message); fail++; }
+
   console.log('\n========== 测试汇总: ' + pass + ' 组通过, ' + fail + ' 组失败 ==========');
   process.exit(fail ? 1 : 0);
 })().catch((e) => { console.error('测试崩溃:', e); process.exit(1); });

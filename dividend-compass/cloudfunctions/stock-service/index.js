@@ -275,6 +275,42 @@ async function handleCheckAlerts(event) {
   return ok(out);
 }
 
+/* ---------------- 指数走势（分时/历史） ---------------- */
+async function handleIndexChart(event) {
+  const code = String(event.code || '').trim();
+  if (!/^\d{6}$/.test(code)) return fail('指数代码格式错误');
+  const market = event.market || 'SH';
+
+  if (event.mode === 'history') {
+    const range = event.range === '5y' ? '5y' : '1y';
+    const ck = 'ih:' + code + ':' + range;
+    const cached = cacheGet(ck, 12 * 3600 * 1000);
+    if (cached) return ok(cached);
+    let points = null;
+    if (range === '1y') {
+      const daily = await ds.getDailyCloses(code, market, 260).catch(() => null);
+      points = daily ? daily.map((x) => ({ d: x.date, price: x.close })) : null;
+    } else {
+      const monthly = await ds.getMonthlyCloses(code, market, 66).catch(() => null);
+      points = monthly ? monthly.map((x) => ({ d: x.ym, price: x.close })) : null;
+    }
+    if (!points || points.length < 10) return fail('历史数据获取失败');
+    const result = { kind: 'history', range, points };
+    cacheSet(ck, result);
+    return ok(result);
+  }
+
+  // 分时（交易时段内 60 秒缓存）
+  const ckm = 'im:' + code;
+  const cachedM = cacheGet(ckm, 60 * 1000);
+  if (cachedM) return ok(cachedM);
+  const d = await ds.getIndexMinute(code, market).catch(() => null);
+  if (!d) return fail('分时数据获取失败');
+  const resultM = { kind: 'minute', preClose: d.preClose, points: d.points };
+  cacheSet(ckm, resultM);
+  return ok(resultM);
+}
+
 /* ---------------- 沪深300月K（12小时缓存，全股票共享） ---------------- */
 async function getIndexCloses() {
   const cached = cacheGet('idx:hs300', 12 * 3600 * 1000);
@@ -405,6 +441,7 @@ exports.main = async (event = {}) => {
       case 'portfolio': return await handlePortfolio(event);
       case 'homebrief': return await handleHomeBrief(event);
       case 'checkAlerts': return await handleCheckAlerts(event);
+      case 'indexChart': return await handleIndexChart(event);
       default: return fail('未知 action: ' + event.action);
     }
   } catch (e) {

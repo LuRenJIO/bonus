@@ -129,12 +129,12 @@ Page({
       const d = await util.callService('homebrief');
       const pct = (v) => (v > 0 ? '+' : '') + v + '%';
       const items = [];
-      // 第一行：市场参照
-      if (d.csiDividend) items.push({ label: '中证红利', val: pct(d.csiDividend.changePercent), cls: util.chgClass(d.csiDividend.changePercent) });
-      if (d.hs300) items.push({ label: '沪深300', val: pct(d.hs300.changePercent), cls: util.chgClass(d.hs300.changePercent) });
-      if (d.shIndex) items.push({ label: '上证指数', val: pct(d.shIndex.changePercent), cls: util.chgClass(d.shIndex.changePercent) });
+      // 第一行：市场参照（点击进指数走势页）
+      if (d.csiDividend) items.push({ label: '中证红利', val: pct(d.csiDividend.changePercent), cls: util.chgClass(d.csiDividend.changePercent), tap: 'chart', code: '000922', name: '中证红利' });
+      if (d.hs300) items.push({ label: '沪深300', val: pct(d.hs300.changePercent), cls: util.chgClass(d.hs300.changePercent), tap: 'chart', code: '000300', name: '沪深300' });
+      if (d.shIndex) items.push({ label: '上证指数', val: pct(d.shIndex.changePercent), cls: util.chgClass(d.shIndex.changePercent), tap: 'chart', code: '000001', name: '上证指数' });
       // 第二行：今日/7日除息动态
-      items.push({ label: '今日除息', val: d.exTodayCount + ' 只', cls: 'gold-text', tap: true });
+      items.push({ label: '今日除息', val: d.exTodayCount + ' 只', cls: 'gold-text', tap: 'ex' });
       if (d.exTodayCash !== null) items.push({ label: '今日派现', val: d.exTodayCash + '亿', cls: 'gold-text' });
       items.push({ label: '7日除息', val: d.exWeekCount + ' 只', cls: '' });
       this.setData({
@@ -143,6 +143,19 @@ Page({
         exTodayCash: d.exTodayCash,
       });
     } catch (e) { /* 速览失败不影响主功能 */ }
+  },
+
+  /** 速览格点击分发：指数→走势页，今日除息→弹层 */
+  onBriefTap(e) {
+    const item = this.data.briefItems[e.currentTarget.dataset.idx];
+    if (!item || !item.tap) return;
+    if (item.tap === 'chart') {
+      wx.navigateTo({
+        url: '/pages/indexchart/indexchart?code=' + item.code + '&name=' + encodeURIComponent(item.name) + '&market=SH',
+      });
+    } else if (item.tap === 'ex') {
+      this.onExTodayTap();
+    }
   },
 
   /* ---------- 今日除息弹层（与分红日历差异化：只看今天，直达个股） ---------- */

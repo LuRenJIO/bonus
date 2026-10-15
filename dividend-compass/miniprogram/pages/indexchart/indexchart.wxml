@@ -1,0 +1,41 @@
+<!--indexchart.wxml 指数走势：分时 / 历史-->
+<view class="page">
+
+  <!-- 指数头部 -->
+  <view class="head-card card">
+    <view class="h-left">
+      <view class="h-name">{{name}}</view>
+      <view class="h-code num">{{market}} {{code}}</view>
+    </view>
+    <view class="h-right">
+      <view class="h-price num">{{head.price}}</view>
+      <view class="h-chg num {{head.chgCls}}">{{head.chgText}}</view>
+    </view>
+  </view>
+
+  <!-- 模式切换 -->
+  <view class="chart-tabs">
+    <view class="ct-tab {{mode === 'minute' ? 'on' : ''}}" data-mode="minute" bindtap="onSwitchMode">当日分时</view>
+    <view class="ct-tab {{mode === 'history' ? 'on' : ''}}" data-mode="history" bindtap="onSwitchMode">历史曲线</view>
+  </view>
+
+  <view wx:if="{{loading}}" class="loading-box">加载中…</view>
+  <view wx:elif="{{error}}" class="empty-box">{{error}}</view>
+
+  <view class="card" wx:else>
+    <!-- 历史区间切换 -->
+    <view class="range-tabs" wx:if="{{mode === 'history'}}">
+      <text class="rt {{range === '1y' ? 'on' : ''}}" data-range="1y" bindtap="onSwitchRange">近1年 · 日线</text>
+      <text class="rt {{range === '5y' ? 'on' : ''}}" data-range="5y" bindtap="onSwitchRange">近5年 · 月线</text>
+    </view>
+    <view class="cv-wrap">
+      <canvas type="2d" id="chartCanvas" class="cv"></canvas>
+    </view>
+    <view class="cv-note" wx:if="{{mode === 'minute'}}">金虚线为昨收价 · 分时每分钟一个点（含午休共242点）</view>
+    <view class="cv-note" wx:else>金线为收盘价 · {{range === '1y' ? '近1年日线' : '近5年月线'}} · 右上角为区间累计涨跌幅</view>
+  </view>
+
+  <view class="footer-tip">
+    <view>数据来源：腾讯财经 · {{mode === 'minute' ? '分时为最近交易日（收盘后为全天数据）' : '收盘价口径'}}</view>
+  </view>
+</view>

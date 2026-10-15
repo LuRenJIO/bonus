@@ -397,6 +397,47 @@ async function getIndexMonthlyCloses(n) {
   return out.length >= 2 ? out : null;
 }
 
+/** 指数日K收盘序列（腾讯 fqkline，近 n 个交易日） */
+async function getDailyCloses(code, market, n) {
+  const sym = String(market || 'SH').toLowerCase() + code;
+  const url = 'https://web.ifzq.gtimg.cn/appstock/app/fqkline/get?param=' +
+    sym + ',day,,,' + (n || 260) + ',';
+  const j = await getJSON(url, { Referer: 'https://gu.qq.com/' });
+  const node = j && j.data && j.data[sym];
+  const rows = (node && (node.day || node.qfqday)) || [];
+  const out = rows.map((r) => ({ date: String(r[0]), close: parseFloat(r[2]) }))
+    .filter((it) => /^\d{4}-\d{2}-\d{2}$/.test(it.date) && isFinite(it.close) && it.close > 0);
+  return out.length >= 2 ? out : null;
+}
+
+/**
+ * 指数分时数据（腾讯 minute/query）
+ * @returns {preClose, points:[{t:'09:30', price}]} 或 null
+ */
+async function getIndexMinute(code, market) {
+  const sym = String(market || 'SH').toLowerCase() + code;
+  const [mText, qText] = await Promise.all([
+    httpGet('https://web.ifzq.gtimg.cn/appstock/app/minute/query?code=' + sym, { Referer: 'https://gu.qq.com/' }),
+    httpGet('https://qt.gtimg.cn/q=' + sym, {}),
+  ]);
+  const j = JSON.parse(mText);
+  const node = j && j.data && j.data[sym];
+  const arr = (node && node.data && node.data.data) || [];
+  const points = arr.map((s) => {
+    const f = String(s).split(' ');
+    const hhmm = f[0] || '';
+    return {
+      t: hhmm.replace(/^(\d{2})(\d{2})$/, '$1:$2'),
+      price: parseFloat(f[1]),
+    };
+  }).filter((x) => /^\d{2}:\d{2}$/.test(x.t) && isFinite(x.price) && x.price > 0);
+  // 昨收：实时接口 p[4]
+  const qm = /="([^"]+)"/.exec(qText);
+  const preClose = qm ? parseFloat(qm[1].split('~')[4]) : null;
+  if (points.length < 10 || !isFinite(preClose) || preClose <= 0) return null;
+  return { preClose, points };
+}
+
 /* ---------------- 7. 分红送配历史（东财 datacenter） ---------------- */
 
 async function getDividendHistory(code) {
@@ -458,6 +499,8 @@ module.exports = {
   getAnalystConsensus: withRetry(getAnalystConsensus, 1),
   getMonthlyCloses: withRetry(getMonthlyCloses, 1),
   getIndexMonthlyCloses: withRetry(getIndexMonthlyCloses, 1),
+  getDailyCloses: withRetry(getDailyCloses, 1),
+  getIndexMinute: withRetry(getIndexMinute, 1),
   getExDividendCalendar: withRetry(getExDividendCalendar, 1),
   getDividendHistory: withRetry(getDividendHistory, 2),
   buildSecid,

@@ -40,13 +40,14 @@
 
   <!-- 默认视图：自选 + 最近浏览 -->
   <block wx:else>
-    <!-- 红利速览：大盘/红利指数 + 今日/7日除息动态 -->
+    <!-- 红利速览：大盘/红利指数（点击看走势） + 今日/7日除息动态 -->
     <view class="brief-card card" wx:if="{{briefItems.length}}">
       <view
         class="brief-item {{item.tap ? 'brief-tap' : ''}}"
         wx:for="{{briefItems}}"
         wx:key="label"
-        bindtap="{{item.tap ? 'onExTodayTap' : ''}}"
+        data-idx="{{index}}"
+        bindtap="onBriefTap"
       >
         <text class="brief-label">{{item.label}}</text>
         <text class="brief-val num {{item.cls}}">{{item.val}}</text>
