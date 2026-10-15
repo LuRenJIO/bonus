@@ -61,7 +61,7 @@ dividend-compass/
 
 1. 下载安装 [微信开发者工具](https://developers.weixin.qq.com/miniprogram/dev/devtools/download.html)（稳定版）
 2. 打开开发者工具 → 导入项目 → 选择本目录 `dividend-compass`
-3. AppID 填入你的 AppID（或导入后在小程序根目录的 `project.config.json` 中修改 `"appid"` 字段）
+3. AppID 已预填在 `project.config.json` 中（`wx10aac5465d7fd67d`），导入时确认显示一致即可
 
 ### 3. 开通云开发（必须）
 

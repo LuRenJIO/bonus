@@ -2,9 +2,8 @@
   "miniprogramRoot": "miniprogram/",
   "cloudfunctionRoot": "cloudfunctions/",
   "compileType": "miniprogram",
-  "appid": "touristappid",
+  "appid": "wx10aac5465d7fd67d",
   "projectname": "dividend-compass",
-  "libVersion": "3.8.10",
   "setting": {
     "es6": true,
     "enhance": true,
