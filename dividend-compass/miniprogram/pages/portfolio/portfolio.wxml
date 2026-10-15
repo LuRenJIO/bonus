@@ -1,0 +1,111 @@
+<!--portfolio.wxml 收息记账：组合分红统计 / 持仓管理-->
+<view class="page">
+
+  <view wx:if="{{loading}}" class="loading-box">加载中…</view>
+
+  <view wx:elif="{{error}}" class="empty-box">
+    <view>{{error}}</view>
+    <view class="err-detail">请确认已部署 favorites 云函数（最新版）</view>
+    <view class="retry-btn" bindtap="onRetry">重试</view>
+  </view>
+
+  <!-- 空状态 -->
+  <block wx:elif="{{!holdings.length}}">
+    <view class="pf-hero card">
+      <view class="pf-hero-title">收息记账本</view>
+      <view class="pf-hero-sub">录入持仓，自动统计今年已收分红、组合股息率与预期分红现金流</view>
+      <view class="pf-hero-btn" bindtap="onToggleForm">+ 添加第一笔持仓</view>
+    </view>
+  </block>
+
+  <!-- 组合视图 -->
+  <block wx:else>
+    <!-- 汇总卡 -->
+    <view class="card pf-sum">
+      <view class="pf-sum-main">
+        <view class="pf-sum-label">今年已收分红（税前）</view>
+        <view class="pf-sum-num num">{{summary.yearReceived}}<text class="pf-unit">元</text></view>
+        <view class="pf-sum-sub" wx:if="{{summary.expectedAnnual}}">按TTM口径预期全年分红 {{summary.expectedAnnual}} 元</view>
+      </view>
+      <view class="pf-sum-grid">
+        <view class="ps-item">
+          <text class="ps-val num">{{summary.totalValue}}</text>
+          <text class="ps-label">持仓市值(元)</text>
+        </view>
+        <view class="ps-item">
+          <text class="ps-val num gold-text">{{summary.portfolioYield === null ? '--' : summary.portfolioYield + '%'}}</text>
+          <text class="ps-label">组合TTM股息率</text>
+        </view>
+        <view class="ps-item" wx:if="{{summary.pnl !== null}}">
+          <text class="ps-val num {{summary.pnl > 0 ? 'up' : summary.pnl < 0 ? 'down' : 'flat'}}">{{summary.pnl > 0 ? '+' : ''}}{{summary.pnlPercent}}%</text>
+          <text class="ps-label">持仓盈亏</text>
+        </view>
+        <view class="ps-item" wx:else>
+          <text class="ps-val num">{{summary.count}}</text>
+          <text class="ps-label">持仓只数</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 持仓列表 -->
+    <view class="card">
+      <view class="card-title">
+        <text>持仓明细</text>
+        <text class="sub" bindtap="onToggleForm">+ 添加</text>
+      </view>
+      <view class="pf-row" wx:for="{{holdings}}" wx:key="code"
+            data-code="{{item.code}}" data-name="{{item.name}}" data-market="{{item.market}}" bindtap="goStock">
+        <view class="pf-left">
+          <view class="pf-name">{{item.name}}</view>
+          <view class="pf-meta num">
+            {{item.shares}}股<block wx:if="{{item.cost}}"> · 成本{{item.cost}}元</block>
+          </view>
+        </view>
+        <view class="pf-mid">
+          <view class="pf-price num">{{item.price === null ? '--' : item.price}}</view>
+          <view class="pf-yld num {{item.ttmYield > 0 ? 'gold-text' : ''}}">{{item.ttmYield === null ? '--' : item.ttmYield + '%'}}</view>
+        </view>
+        <view class="pf-right">
+          <view class="pf-div num">{{item.yearDividend}}元</view>
+          <view class="pf-div-label">今年已收</view>
+        </view>
+        <view class="pf-del" data-code="{{item.code}}" data-name="{{item.name}}" catchtap="onRemove">✕</view>
+      </view>
+      <view class="pf-note">"今年已收"为税前口径（今年内除息的分红×持股数）；股息率为TTM口径</view>
+    </view>
+  </block>
+
+  <!-- 添加持仓表单 -->
+  <view class="pf-form-mask" wx:if="{{showForm}}" bindtap="onToggleForm"></view>
+  <view class="pf-form card" wx:if="{{showForm}}">
+    <view class="card-title"><text>添加持仓</text><text class="sub" bindtap="onToggleForm">收起</text></view>
+
+    <view class="pf-search">
+      <input class="pf-search-in" placeholder="搜索股票名称/代码" placeholder-class="pf-ph"
+             value="{{keyword}}" bindinput="onSearchInput" />
+    </view>
+    <view wx:if="{{searching}}" class="pf-search-tip">搜索中…</view>
+    <view class="pf-sug" wx:elif="{{suggestions.length}}">
+      <view class="pf-sug-item" wx:for="{{suggestions}}" wx:key="code"
+            data-code="{{item.code}}" data-name="{{item.name}}" data-market="{{item.market}}"
+            bindtap="onPick">
+        <text>{{item.name}}</text><text class="num pf-sug-code">{{item.code}}</text>
+      </view>
+    </view>
+    <view class="pf-picked" wx:if="{{picked}}">已选：{{picked.name}}（{{picked.code}}）</view>
+
+    <view class="pf-inputs">
+      <view class="pf-field">
+        <text class="pf-field-label">持股数量</text>
+        <input class="pf-field-in num" type="digit" placeholder="如 1000" placeholder-class="pf-ph"
+               value="{{shares}}" bindinput="onSharesInput" />
+      </view>
+      <view class="pf-field">
+        <text class="pf-field-label">成本价(选填)</text>
+        <input class="pf-field-in num" type="digit" placeholder="用于算盈亏" placeholder-class="pf-ph"
+               value="{{cost}}" bindinput="onCostInput" />
+      </view>
+    </view>
+    <view class="pf-save" bindtap="onSave">{{saving ? '保存中…' : '保存持仓'}}</view>
+  </view>
+</view>

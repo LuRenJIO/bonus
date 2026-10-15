@@ -14,6 +14,7 @@ const ds = require('./lib/dataSource');
 const div = require('./lib/dividend');
 const pred = require('./lib/prediction');
 const { healthCheck } = require('./lib/health');
+const { calcRiskMetrics } = require('./lib/risk');
 
 /** 类型安全数字判断（注意 isFinite(null) === true 的 JS 陷阱，不可直接用 isFinite 判空） */
 function isNum(v) { return typeof v === 'number' && isFinite(v); }
@@ -75,14 +76,15 @@ async function handleOverview(event) {
     if (cached) return ok(cached);
   }
 
-  // 并行抓取六路数据
-  const [quote, financeAnnualAll, financeReportsAll, dividendRaw, consensus, monthlyCloses] = await Promise.all([
+  // 并行抓取七路数据（沪深300月K 带12小时缓存，多个股票共享）
+  const [quote, financeAnnualAll, financeReportsAll, dividendRaw, consensus, monthlyCloses, indexCloses] = await Promise.all([
     ds.getQuote(code, market).catch(() => null),
     ds.getFinanceMain(code, 1).catch(() => []),   // 按年度
     ds.getFinanceMain(code, 0).catch(() => []),   // 按报告期
     ds.getDividendHistory(code).catch(() => []),
     ds.getAnalystConsensus(code).catch(() => null), // 机构一致预期（研报聚合）
     ds.getMonthlyCloses(code, market, 66).catch(() => null), // 月末收盘价（股息率曲线）
+    getIndexCloses(),                              // 沪深300月末收盘（Beta基准）
   ]);
 
   if (!quote) return fail('行情获取失败，请稍后重试');
@@ -167,11 +169,16 @@ async function handleOverview(event) {
       medianByYear: consensus.medianByYear,
     } : null,
     prediction,
-    yieldCurve: div.calcYieldSeries(
-      implemented,
-      monthlyCloses,
-      prediction.enhanced ? prediction.enhanced.yields.neutral : (prediction.basic ? prediction.basic.yields.neutral : null)
-    ),
+    yieldCurve: (() => {
+      const yc = div.calcYieldSeries(
+        implemented,
+        monthlyCloses,
+        prediction.enhanced ? prediction.enhanced.yields.neutral : (prediction.basic ? prediction.basic.yields.neutral : null)
+      );
+      if (yc) yc.percentile = div.yieldPercentile(yc.points);
+      return yc;
+    })(),
+    risk: calcRiskMetrics(monthlyCloses, indexCloses),
     health,
     meta: {
       perUnassignProfit: perUnassign,
@@ -184,6 +191,125 @@ async function handleOverview(event) {
   return ok(result);
 }
 
+/* ---------------- 沪深300月K（12小时缓存，全股票共享） ---------------- */
+async function getIndexCloses() {
+  const cached = cacheGet('idx:hs300', 12 * 3600 * 1000);
+  if (cached) return cached;
+  const list = await ds.getIndexMonthlyCloses(66).catch(() => null);
+  if (list) cacheSet('idx:hs300', list);
+  return list;
+}
+
+/* ---------------- 分红日历 ---------------- */
+async function handleCalendar(event) {
+  let days = parseInt(event.days, 10);
+  if (!isNum(days)) days = 30;
+  days = Math.max(7, Math.min(days, 90));
+
+  // 全市场未来除息（12小时缓存）
+  const ck = 'cal:' + days;
+  let market = cacheGet(ck, 12 * 3600 * 1000);
+  if (!market) {
+    market = await ds.getExDividendCalendar(days).catch(() => []);
+    if (market.length) cacheSet(ck, market);
+  }
+
+  // 自选股近期分红（含预案），前端传入 codes: [{code, name, market}]
+  let fav = [];
+  const codes = (Array.isArray(event.codes) ? event.codes : [])
+    .filter((c) => c && /^\d{6}$/.test(String(c.code))).slice(0, 20);
+  if (codes.length) {
+    const results = await Promise.all(codes.map(async (c) => {
+      try {
+        const raw = await ds.getDividendHistory(c.code);
+        const list = div.upcomingDividends(raw, 90);
+        return list.length ? { code: c.code, name: c.name || (raw[0] && raw[0].name) || c.code, items: list } : null;
+      } catch (e) { return null; }
+    }));
+    fav = results.filter(Boolean);
+  }
+
+  return ok({ days, market, fav });
+}
+
+/* ---------------- 收息记账（组合计算） ---------------- */
+async function handlePortfolio(event) {
+  const holdings = (Array.isArray(event.holdings) ? event.holdings : [])
+    .filter((h) => h && /^\d{6}$/.test(String(h.code)) && isNum(Number(h.shares)) && Number(h.shares) > 0)
+    .slice(0, 20);
+  if (!holdings.length) return ok({ items: [], summary: null });
+
+  // 5分钟缓存（同一组合重复刷新不重复抓取）
+  const ck = 'pf:' + holdings.map((h) => h.code + ':' + h.shares).join(',');
+  const cached = cacheGet(ck, 5 * 60 * 1000);
+  if (cached) return ok(cached);
+
+  const year = new Date().getFullYear();
+  const list = holdings.map((h) => ({
+    code: String(h.code),
+    market: h.market || (/^(6|9)/.test(h.code) ? 'SH' : 'SZ'),
+    shares: Number(h.shares),
+    cost: isNum(Number(h.cost)) && Number(h.cost) > 0 ? Number(h.cost) : null,
+  }));
+
+  const [quotes, dividendLists] = await Promise.all([
+    ds.quoteBatch(list.map((h) => ({ code: h.code, market: h.market }))).catch(() => []),
+    Promise.all(list.map((h) => ds.getDividendHistory(h.code).catch(() => []))),
+  ]);
+  const qMap = {};
+  quotes.forEach((q) => { qMap[q.code] = q; });
+
+  let totalValue = 0, costedValue = 0, costedCost = 0, hasAnyCost = false, yearTotal = 0, ttmTotal = 0;
+  const items = list.map((h, idx) => {
+    const quote = qMap[h.code] || {};
+    const price = isNum(quote.price) ? quote.price : null;
+    const { implemented } = div.parseDividends(dividendLists[idx]);
+    const ttm = div.calcTTMDividend(implemented);
+    // 今年已除息的每股分红合计（税前）
+    let yearPerShare = 0;
+    implemented.forEach((it) => {
+      if (it.hasCash && it.exDate && String(it.exDate).slice(0, 4) === String(year)) yearPerShare += it.perShare;
+    });
+    const value = price !== null ? price * h.shares : null;
+    if (value !== null) totalValue += value;
+    // 盈亏仅对"有成本且有行情"的持仓计算（券商惯例，缺失成本的持仓不参与）
+    if (h.cost !== null && value !== null) {
+      costedCost += h.cost * h.shares;
+      costedValue += value;
+      hasAnyCost = true;
+    }
+    yearTotal += yearPerShare * h.shares;
+    ttmTotal += ttm.perShare * h.shares;
+    return {
+      code: h.code,
+      name: quote.name || (dividendLists[idx][0] && dividendLists[idx][0].name) || h.code,
+      market: h.market,
+      shares: h.shares,
+      cost: h.cost,
+      price,
+      changePercent: isNum(quote.changePercent) ? quote.changePercent : null,
+      ttmPerShare: ttm.perShare,
+      ttmYield: price !== null && ttm.perShare > 0 ? +((ttm.perShare / price) * 100).toFixed(2) : null,
+      yearDividend: +(yearPerShare * h.shares).toFixed(2),   // 今年已收息（税前）
+      ttmDividend: +(ttm.perShare * h.shares).toFixed(2),    // 近12个月分红（税前）
+    };
+  });
+
+  const summary = {
+    count: items.length,
+    totalValue: +totalValue.toFixed(2),
+    totalCost: hasAnyCost ? +costedCost.toFixed(2) : null,
+    pnl: hasAnyCost ? +(costedValue - costedCost).toFixed(2) : null,
+    pnlPercent: hasAnyCost && costedCost > 0 ? +((costedValue / costedCost - 1) * 100).toFixed(2) : null,
+    yearReceived: +yearTotal.toFixed(2),                     // 今年已收息（税前）
+    expectedAnnual: +ttmTotal.toFixed(2),                    // 预期年度分红（按TTM口径）
+    portfolioYield: totalValue > 0 ? +((ttmTotal / totalValue) * 100).toFixed(2) : null, // 组合TTM股息率
+  };
+  const result = { items, summary };
+  cacheSet(ck, result);
+  return ok(result);
+}
+
 exports.main = async (event = {}) => {
   try {
     switch (event.action) {
@@ -191,6 +317,8 @@ exports.main = async (event = {}) => {
       case 'quote': return await handleQuote(event);
       case 'quotes': return await handleQuotes(event);
       case 'overview': return await handleOverview(event);
+      case 'calendar': return await handleCalendar(event);
+      case 'portfolio': return await handlePortfolio(event);
       default: return fail('未知 action: ' + event.action);
     }
   } catch (e) {

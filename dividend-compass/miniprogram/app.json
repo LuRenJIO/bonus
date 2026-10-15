@@ -1,7 +1,9 @@
 {
   "pages": [
     "pages/index/index",
-    "pages/stock/stock"
+    "pages/stock/stock",
+    "pages/calendar/calendar",
+    "pages/portfolio/portfolio"
   ],
   "window": {
     "navigationBarBackgroundColor": "#0e1116",

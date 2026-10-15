@@ -302,6 +302,44 @@
 .yc-legend { display: flex; }
 .yl-item { display: flex; align-items: center; font-size: 20rpx; color: var(--text-dim); margin-right: 28rpx; }
 .yl-dot { width: 18rpx; height: 18rpx; border-radius: 50%; margin-right: 8rpx; }
+.yc-pos {
+  margin-top: 16rpx;
+  padding: 14rpx 18rpx;
+  background: var(--bg);
+  border-radius: 10rpx;
+  font-size: 22rpx;
+  color: var(--text-dim);
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.yc-pos-num { font-size: 28rpx; font-weight: 700; margin: 0 4rpx; }
+.yc-pos-num.pos-cheap { color: #e8b95f; }
+.yc-pos-num.pos-rich { color: #6fbf8f; }
+.yc-pos-num.pos-mid { color: var(--text-main); }
+.yc-pos-tag {
+  margin-left: auto;
+  font-size: 20rpx;
+  padding: 4rpx 14rpx;
+  border-radius: 8rpx;
+}
+.yc-pos-tag.pos-cheap { color: #e8b95f; background: rgba(212, 169, 78, 0.14); }
+.yc-pos-tag.pos-rich { color: #6fbf8f; background: rgba(111, 191, 143, 0.12); }
+.yc-pos-tag.pos-mid { color: var(--text-dim); background: rgba(148, 163, 184, 0.12); }
+
+/* ================= 波动与风险 ================= */
+.risk-grid { display: flex; }
+.risk-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8rpx 0;
+}
+.risk-item + .risk-item { border-left: 1rpx solid rgba(148, 163, 184, 0.12); }
+.risk-val { font-size: 34rpx; font-weight: 700; color: var(--gold); }
+.risk-label { font-size: 22rpx; color: var(--text-main); margin-top: 8rpx; }
+.risk-sub { font-size: 18rpx; color: var(--text-dim); margin-top: 4rpx; }
 
 /* ================= 财务 ================= */
 .latest-report {

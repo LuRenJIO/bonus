@@ -238,6 +238,37 @@
         <view class="yl-item"><text class="yl-dot" style="background:#d4a94e"></text>历史TTM股息率</view>
         <view class="yl-item"><text class="yl-dot" style="background:transparent;border:2rpx solid #e57373"></text>预期股息率（中性）</view>
       </view>
+      <view class="yc-pos" wx:if="{{d.yieldCurve.percentile !== null && d.yieldCurve.percentile !== undefined}}">
+        <text>当前股息率处于近5年 </text>
+        <text class="yc-pos-num num {{fmt.posClass(d.yieldCurve.percentile)}}">{{d.yieldCurve.percentile}}%</text>
+        <text> 分位</text>
+        <text class="yc-pos-tag {{fmt.posClass(d.yieldCurve.percentile)}}">{{fmt.posTag(d.yieldCurve.percentile)}}</text>
+      </view>
+    </view>
+
+    <!-- ============ 波动与风险 ============ -->
+    <view class="card" wx:if="{{d.risk}}">
+      <view class="card-title">
+        <text>波动与风险</text>
+        <text class="sub">低波策略视角 · 月度口径</text>
+      </view>
+      <view class="risk-grid">
+        <view class="risk-item">
+          <text class="risk-val num">{{fmt.fmtNum(d.risk.volatility, 1)}}%</text>
+          <text class="risk-label">年化波动率</text>
+          <text class="risk-sub">近1年·月度收益</text>
+        </view>
+        <view class="risk-item">
+          <text class="risk-val num">{{fmt.fmtNum(d.risk.maxDrawdown, 1)}}%</text>
+          <text class="risk-label">最大回撤</text>
+          <text class="risk-sub">近1年·月末价</text>
+        </view>
+        <view class="risk-item">
+          <text class="risk-val num">{{fmt.fmtNum(d.risk.beta, 2)}}</text>
+          <text class="risk-label">Beta</text>
+          <text class="risk-sub">近5年·对沪深300</text>
+        </view>
+      </view>
     </view>
 
     <!-- ============ 分红历史 ============ -->

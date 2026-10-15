@@ -39,11 +39,27 @@ var year = function (dateStr) {
   return dateStr.substring(0, 4);
 };
 
+// 股息率分位解读：高分位=股息率高=股价相对便宜
+var posTag = function (p) {
+  if (!ok(p)) return '';
+  if (p >= 70) return '股息率高位 · 相对低估';
+  if (p <= 30) return '股息率低位 · 相对偏贵';
+  return '股息率中性区间';
+};
+var posClass = function (p) {
+  if (!ok(p)) return '';
+  if (p >= 70) return 'pos-cheap';
+  if (p <= 30) return 'pos-rich';
+  return 'pos-mid';
+};
+
 module.exports = {
   fmtYi: fmtYi,
   fmtNum: fmtNum,
   signed: signed,
   cls: cls,
   pct: pct,
-  year: year
+  year: year,
+  posTag: posTag,
+  posClass: posClass
 };

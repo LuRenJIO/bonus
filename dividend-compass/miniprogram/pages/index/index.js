@@ -106,4 +106,12 @@ Page({
         '&market=' + (d.market || ''),
     });
   },
+
+  goCalendar() {
+    wx.navigateTo({ url: '/pages/calendar/calendar' });
+  },
+
+  goPortfolio() {
+    wx.navigateTo({ url: '/pages/portfolio/portfolio' });
+  },
 });

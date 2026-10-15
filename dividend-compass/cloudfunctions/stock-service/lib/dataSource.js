@@ -384,7 +384,20 @@ async function getMonthlyEast(code, market, n) {
   return out.length >= 2 ? out : null;
 }
 
-/* ---------------- 6. 分红送配历史（东财 datacenter） ---------------- */
+/** 沪深300指数月末收盘价（Beta 计算基准，腾讯源） */
+async function getIndexMonthlyCloses(n) {
+  const sym = 'sh000300';
+  const url = 'https://proxy.finance.qq.com/ifzqgtimg/appstock/app/fqkline/get?param=' +
+    sym + ',month,,,' + (n || 66) + ',';
+  const j = await getJSON(url, { Referer: 'https://gu.qq.com/' });
+  const node = j && j.data && j.data[sym];
+  const rows = (node && node.month) || [];
+  const out = rows.map((r) => ({ ym: String(r[0]).slice(0, 7), close: parseFloat(r[2]) }))
+    .filter((it) => it.ym && isFinite(it.close) && it.close > 0);
+  return out.length >= 2 ? out : null;
+}
+
+/* ---------------- 7. 分红送配历史（东财 datacenter） ---------------- */
 
 async function getDividendHistory(code) {
   const url = 'https://datacenter-web.eastmoney.com/api/data/v1/get?reportName=RPT_SHAREBONUS_DET' +
@@ -412,6 +425,30 @@ async function getDividendHistory(code) {
   }));
 }
 
+/** 全市场未来 N 天除权除息日程（东财 datacenter，按除息日升序，仅现金分红） */
+async function getExDividendCalendar(days) {
+  const start = new Date();
+  const end = new Date(Date.now() + days * 24 * 3600 * 1000);
+  // 本地时区日期（与 dividend.toDateStr 口径一致，避免 UTC 跨日错位）
+  const fmt = (dt) => dt.getFullYear() + '-' + String(dt.getMonth() + 1).padStart(2, '0') + '-' + String(dt.getDate()).padStart(2, '0');
+  const filter = "(EX_DIVIDEND_DATE>='" + fmt(start) + "')(EX_DIVIDEND_DATE<='" + fmt(end) + "')";
+  const url = 'https://datacenter-web.eastmoney.com/api/data/v1/get?reportName=RPT_SHAREBONUS_DET' +
+    '&columns=ALL&filter=' + encodeURIComponent(filter) +
+    '&pageSize=500&pageNumber=1&sortColumns=EX_DIVIDEND_DATE&sortTypes=1';
+  const j = await getJSON(url, { Referer: 'https://data.eastmoney.com/' });
+  const rows = (j && j.result && j.result.data) || [];
+  return rows
+    .filter((r) => r.PRETAX_BONUS_RMB > 0)
+    .map((r) => ({
+      code: r.SECURITY_CODE,
+      name: r.SECURITY_NAME_ABBR,
+      exDate: (r.EX_DIVIDEND_DATE || '').slice(0, 10),
+      perShare: +(r.PRETAX_BONUS_RMB / 10).toFixed(4),  // 每10股 → 每股
+      progress: r.ASSIGN_PROGRESS || '',
+    }))
+    .filter((r) => r.exDate && r.code);
+}
+
 module.exports = {
   searchStock: withRetry(searchStock, 2),
   getQuote: withRetry(getQuote, 2),
@@ -419,6 +456,8 @@ module.exports = {
   getFinanceMain: withRetry(getFinanceMain, 2),
   getAnalystConsensus: withRetry(getAnalystConsensus, 1),
   getMonthlyCloses: withRetry(getMonthlyCloses, 1),
+  getIndexMonthlyCloses: withRetry(getIndexMonthlyCloses, 1),
+  getExDividendCalendar: withRetry(getExDividendCalendar, 1),
   getDividendHistory: withRetry(getDividendHistory, 2),
   buildSecid,
 };

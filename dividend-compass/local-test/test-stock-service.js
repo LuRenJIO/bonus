@@ -137,6 +137,18 @@ function assert(cond, msg) {
       assert(Math.abs(yc.expected.yield - neutralY) < 0.01, '预期点=中性预测股息率');
     }
 
+    // 股息率历史分位
+    assert(yc.percentile >= 1 && yc.percentile <= 99, '股息率历史分位 1~99: ' + yc.percentile + '%');
+    console.log('  [历史分位] 当前股息率处于近5年 ' + yc.percentile + '% 分位');
+
+    // 波动与风险指标
+    const rk = d3.risk;
+    assert(rk, '风险指标已产出');
+    assert(rk.volatility > 0 && rk.volatility < 100, '年化波动率合理: ' + rk.volatility + '%');
+    assert(rk.maxDrawdown >= 0 && rk.maxDrawdown < 100, '近1年最大回撤合理: ' + rk.maxDrawdown + '%');
+    assert(rk.beta !== null && rk.beta > -1 && rk.beta < 4, 'Beta(对沪深300)合理: ' + rk.beta);
+    console.log('  [风险指标] 年化波动率 ' + rk.volatility + '% · 最大回撤 ' + rk.maxDrawdown + '% · Beta ' + rk.beta);
+
     // 股息率阶梯（前端纯函数，本地直接验证；用盈利修正中性分红）
     const neutralDiv = p.enhanced ? p.enhanced.range.neutral : p.basic.range.neutral;
     const ladder = util.buildLadder(neutralDiv, d3.quote.price);
@@ -186,6 +198,72 @@ function assert(cond, msg) {
     assert(r.success, 'overview 成功');
     const d = r.data;
     console.log('  ' + d.name + ' TTM股息率: ' + d.dividend.ttm.yield + '%  体检: ' + d.health.score + '分');
+    pass++;
+  } catch (e) { console.log('  ✗ ' + e.message); fail++; }
+
+  // ---------- 6. 分红日历（全市场 + 自选） ----------
+  console.log('\n========== 6. 分红日历 ==========');
+  try {
+    const r = await fn.main({
+      action: 'calendar',
+      days: 30,
+      codes: [{ code: '600519', name: '贵州茅台' }, { code: '600900', name: '长江电力' }],
+    });
+    assert(r.success, 'calendar 成功');
+    const mkt = r.data.market || [];
+    assert(mkt.length > 0, '全市场未来30天有除息安排(' + mkt.length + '条)');
+    for (let i = 1; i < Math.min(mkt.length, 20); i++) {
+      assert(mkt[i].exDate >= mkt[i - 1].exDate, '全市场按除息日升序');
+    }
+    assert(mkt.every((x) => x.perShare > 0 && /^\d{6}$/.test(x.code)), '字段完整(仅现金分红)');
+    console.log('  [全市场] ' + mkt.length + '条, 首条: ' + mkt[0].exDate + ' ' + mkt[0].name + ' 每股' + mkt[0].perShare + '元');
+    const fav = r.data.fav || [];
+    console.log('  [自选] ' + fav.length + '只股票有近期分红安排');
+    fav.forEach((g) => {
+      assert(g.items && g.items.length > 0, g.name + ' 有分红项');
+      g.items.slice(0, 2).forEach((it) => console.log('    ' + g.name + ' · ' + (it.exDate || '未定') + ' · 每股' + it.perShare + '元 · ' + it.progress));
+    });
+    // 动态验证：拿全市场首条即将除息的股票反查自选日历，必须可见
+    if (mkt.length) {
+      const pick = mkt[0];
+      const r2 = await fn.main({ action: 'calendar', days: 30, codes: [{ code: pick.code, name: pick.name }] });
+      const fav2 = (r2.data && r2.data.fav) || [];
+      assert(fav2.length === 1 && fav2[0].items.length > 0, '即将除息股票在自选日历中可见');
+      console.log('  [自选·动态] ' + pick.name + ' → ' + fav2[0].items[0].exDate + ' 每股' + fav2[0].items[0].perShare + '元');
+    }
+    pass++;
+  } catch (e) { console.log('  ✗ ' + e.message); fail++; }
+
+  // ---------- 7. 收息记账（组合计算） ----------
+  console.log('\n========== 7. 收息记账 ==========');
+  try {
+    const r = await fn.main({
+      action: 'portfolio',
+      holdings: [
+        { code: '600519', market: 'SH', shares: 100, cost: 1500 },
+        { code: '600900', market: 'SH', shares: 2000, cost: 28 },
+        { code: '000001', market: 'SZ', shares: 10000 },  // 无成本
+      ],
+    });
+    assert(r.success, 'portfolio 成功');
+    const s = r.data.summary;
+    assert(r.data.items.length === 3, '3条持仓');
+    assert(s.totalValue > 0, '组合市值>0: ' + s.totalValue + '元');
+    assert(s.yearReceived >= 0, '今年已收息>=0: ' + s.yearReceived + '元');
+    assert(s.portfolioYield > 0 && s.portfolioYield < 15, '组合TTM股息率合理: ' + s.portfolioYield + '%');
+    assert(s.expectedAnnual > 0, '预期年度分红>0: ' + s.expectedAnnual + '元');
+    assert(s.pnl !== null && s.totalCost > 0, '含成本持仓的盈亏已计算: ' + s.pnl + '元 (' + s.pnlPercent + '%)');
+    r.data.items.forEach((it) => {
+      assert(it.price > 0, it.name + ' 有行情');
+      console.log('  ' + it.name + ': ' + it.shares + '股 × ' + it.price + '元, TTM股息率' + it.ttmYield + '%, 今年已收' + it.yearDividend + '元');
+    });
+    console.log('  [汇总] 市值' + s.totalValue + '元 · 今年已收' + s.yearReceived + '元 · 组合股息率' + s.portfolioYield + '% · 盈亏' + s.pnlPercent + '%');
+    // 空持仓
+    const rEmpty = await fn.main({ action: 'portfolio', holdings: [] });
+    assert(rEmpty.success && rEmpty.data.summary === null, '空持仓返回 summary=null');
+    // 全部无成本 → 盈亏为空
+    const rNoCost = await fn.main({ action: 'portfolio', holdings: [{ code: '600519', market: 'SH', shares: 100 }] });
+    assert(rNoCost.data.summary.pnl === null, '无成本持仓时盈亏为 null');
     pass++;
   } catch (e) { console.log('  ✗ ' + e.message); fail++; }
 

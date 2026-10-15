@@ -1,13 +1,16 @@
 /**
- * 云函数：favorites —— 自选股收藏（云数据库，按 _openid 自动隔离）
+ * 云函数：favorites —— 自选股 + 收息记账持仓（云数据库，按 _openid 自动隔离）
  *
  * action:
- *   list                       我的自选列表（含缓存行情快照）
- *   add    {code, name, market?}     添加自选
- *   remove {code}               移除自选
+ *   list                            我的自选列表
+ *   add       {code, name, market?}      添加自选
+ *   remove    {code}                      移除自选
+ *   holdingList                        我的持仓列表
+ *   holdingAdd {code, name, market?, shares, cost?}  添加/覆盖持仓
+ *   holdingRemove {code}               移除持仓
  *
  * 部署说明：依赖 wx-server-sdk，上传时选择"上传并部署：云端安装依赖"。
- * 首次调用会自动创建 favorites 集合。
+ * 首次调用会自动创建 favorites / holdings 集合。
  */
 
 const cloud = require('wx-server-sdk');
@@ -15,10 +18,11 @@ cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
 
 const db = cloud.database();
 const COL = 'favorites';
+const COL_H = 'holdings';
 
-async function ensureCollection() {
+async function ensureCollection(col) {
   try {
-    await db.createCollection(COL);
+    await db.createCollection(col);
   } catch (e) { /* 已存在则忽略 */ }
 }
 
@@ -35,7 +39,7 @@ async function handleList() {
   } catch (e) {
     // 集合不存在
     if (String(e.errCode) === '-502005' || /not exist|不存在/.test(e.errMsg || '')) {
-      await ensureCollection();
+      await ensureCollection(COL);
       return ok([]);
     }
     throw e;
@@ -45,7 +49,7 @@ async function handleList() {
 async function handleAdd(event) {
   const code = String(event.code || '').trim();
   if (!/^\d{6}$/.test(code)) return fail('股票代码格式错误');
-  await ensureCollection();
+  await ensureCollection(COL);
 
   // 去重：同一 openid + code 只保留一条
   const exist = await db.collection(COL).where({ code }).count();
@@ -68,12 +72,62 @@ async function handleRemove(event) {
   return ok({ removed: true });
 }
 
+/* ---------------- 持仓（收息记账） ---------------- */
+async function handleHoldingList() {
+  try {
+    const res = await db.collection(COL_H)
+      .orderBy('addedAt', 'desc')
+      .limit(50)
+      .get();
+    return ok(res.data || []);
+  } catch (e) {
+    if (String(e.errCode) === '-502005' || /not exist|不存在/.test(e.errMsg || '')) {
+      await ensureCollection(COL_H);
+      return ok([]);
+    }
+    throw e;
+  }
+}
+
+async function handleHoldingAdd(event) {
+  const code = String(event.code || '').trim();
+  if (!/^\d{6}$/.test(code)) return fail('股票代码格式错误');
+  const shares = Number(event.shares);
+  if (!(shares > 0)) return fail('持股数量需大于0');
+  const cost = Number(event.cost);
+  const costVal = (cost > 0) ? cost : null;
+  await ensureCollection(COL_H);
+
+  const item = {
+    code,
+    name: event.name || '',
+    market: event.market || (/^(6|9)/.test(code) ? 'SH' : 'SZ'),
+    shares,
+    cost: costVal,
+    addedAt: db.serverDate(),
+  };
+  // 同股覆盖：先删后加（同一 openid 下 code 唯一）
+  await db.collection(COL_H).where({ code }).remove();
+  const res = await db.collection(COL_H).add({ data: item });
+  return ok({ id: res._id });
+}
+
+async function handleHoldingRemove(event) {
+  const code = String(event.code || '').trim();
+  if (!code) return fail('缺少股票代码');
+  await db.collection(COL_H).where({ code }).remove();
+  return ok({ removed: true });
+}
+
 exports.main = async (event = {}) => {
   try {
     switch (event.action) {
       case 'list': return await handleList(event);
       case 'add': return await handleAdd(event);
       case 'remove': return await handleRemove(event);
+      case 'holdingList': return await handleHoldingList(event);
+      case 'holdingAdd': return await handleHoldingAdd(event);
+      case 'holdingRemove': return await handleHoldingRemove(event);
       default: return fail('未知 action: ' + event.action);
     }
   } catch (e) {

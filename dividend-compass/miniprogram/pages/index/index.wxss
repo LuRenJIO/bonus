@@ -140,6 +140,23 @@
   color: var(--text-sub);
 }
 
+/* ---------- 快捷入口 ---------- */
+.quick-card {
+  display: flex;
+  align-items: center;
+  padding: 26rpx 10rpx;
+}
+.q-item {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.q-icon { font-size: 44rpx; margin-right: 18rpx; }
+.q-title { font-size: 28rpx; font-weight: 600; }
+.q-sub { font-size: 20rpx; color: var(--text-dim); margin-top: 4rpx; }
+.q-divider { width: 1rpx; height: 56rpx; background: var(--border); }
+
 /* ---------- 页脚 ---------- */
 .footer-tip {
   text-align: center;

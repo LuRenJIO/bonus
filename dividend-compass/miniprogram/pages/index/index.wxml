@@ -40,6 +40,25 @@
 
   <!-- 默认视图：自选 + 最近浏览 -->
   <block wx:else>
+    <!-- 快捷入口 -->
+    <view class="quick-card card">
+      <view class="q-item" bindtap="goCalendar">
+        <text class="q-icon">📅</text>
+        <view class="q-text">
+          <view class="q-title">分红日历</view>
+          <view class="q-sub">除息日程 · 分红预案</view>
+        </view>
+      </view>
+      <view class="q-divider"></view>
+      <view class="q-item" bindtap="goPortfolio">
+        <text class="q-icon">💰</text>
+        <view class="q-text">
+          <view class="q-title">收息记账</view>
+          <view class="q-sub">持仓分红 · 今年已收</view>
+        </view>
+      </view>
+    </view>
+
     <!-- 自选股 -->
     <view class="card">
       <view class="card-title">

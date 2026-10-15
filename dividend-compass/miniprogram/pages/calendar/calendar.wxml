@@ -1,0 +1,72 @@
+<!--calendar.wxml 分红日历：自选近期分红 / 全市场除息日程-->
+<view class="page">
+
+  <!-- Tab 切换 -->
+  <view class="cal-tabs">
+    <view class="cal-tab {{tab === 'fav' ? 'on' : ''}}" data-tab="fav" bindtap="onSwitchTab">
+      自选分红<text wx:if="{{favCount}}" class="cal-badge num">{{favCount}}</text>
+    </view>
+    <view class="cal-tab {{tab === 'mkt' ? 'on' : ''}}" data-tab="mkt" bindtap="onSwitchTab">
+      全市场除息<text wx:if="{{mktCount}}" class="cal-badge num">{{mktCount}}</text>
+    </view>
+  </view>
+
+  <view wx:if="{{loading}}" class="loading-box">加载中…</view>
+  <view wx:elif="{{error}}" class="empty-box">
+    <view>{{error}}</view>
+    <view class="retry-btn" bindtap="onRetry">重试</view>
+  </view>
+
+  <!-- 自选分红 -->
+  <block wx:elif="{{tab === 'fav'}}">
+    <view wx:if="{{!favGroups.length}}" class="empty-box">
+      近90天暂无自选股分红安排
+      <view class="empty-sub">可在首页搜索添加自选，分红预案会自动出现在这里</view>
+    </view>
+    <view class="card" wx:for="{{favGroups}}" wx:for-item="grp" wx:key="stock.code">
+      <view class="card-title">
+        <text>{{grp.stock.name}}</text>
+        <text class="sub num">{{grp.stock.code}}</text>
+      </view>
+      <view
+        class="fav-ev"
+        wx:for="{{grp.items}}"
+        wx:key="index"
+        data-code="{{grp.stock.code}}"
+        data-name="{{grp.stock.name}}"
+        bindtap="goStock"
+      >
+        <view class="fe-date">
+          <view class="fe-date-text {{item.isPlan ? 'plan' : ''}}">{{item.dateText}}</view>
+          <view class="fe-profile">{{item.profile}}</view>
+        </view>
+        <view class="fe-right">
+          <view class="fe-per num">每股{{item.perShare}}元</view>
+          <view class="fe-tag {{item.isPlan ? 'plan' : ''}}">{{item.isPlan ? '预案' : '已定'}}</view>
+        </view>
+      </view>
+    </view>
+  </block>
+
+  <!-- 全市场除息 -->
+  <block wx:elif="{{tab === 'mkt'}}">
+    <view wx:if="{{!mktGroups.length}}" class="empty-box">未来30天暂无除息安排</view>
+    <view class="card" wx:for="{{mktGroups}}" wx:for-item="grp" wx:key="date">
+      <view class="card-title">
+        <text>{{grp.label}}</text>
+        <text class="sub">{{grp.items.length}} 只除息</text>
+      </view>
+      <view class="mkt-row" wx:for="{{grp.items}}" wx:key="code" data-code="{{item.code}}"
+            data-name="{{item.name}}" bindtap="goStock">
+        <view class="mr-left">
+          <text class="mr-name">{{item.name}}</text>
+          <text class="mr-code num">{{item.code}}</text>
+        </view>
+        <view class="mr-per num">每股{{item.perShare}}元</view>
+      </view>
+    </view>
+    <view class="footer-tip">
+      <view>仅展示现金分红（税前），按除权除息日升序</view>
+    </view>
+  </block>
+</view>

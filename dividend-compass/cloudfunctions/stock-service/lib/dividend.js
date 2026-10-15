@@ -164,4 +164,52 @@ function monthEndStr(ym) {
   return toDateStr(nextFirst);
 }
 
-module.exports = { parseDividends, calcTTMDividend, aggregateAnnual, calcPayoutRatios, latestFullYear, calcYieldSeries, toDateStr };
+/**
+ * 股息率历史分位：最新点在全部历史点位中的分位（0-100 整数）
+ * 高分位 = 当前股息率高于历史上大部分时间 = 股价相对便宜（红利策略买点信号）
+ */
+function yieldPercentile(points) {
+  if (!points || points.length < 6) return null;
+  const last = points[points.length - 1].yield;
+  const below = points.filter((p) => p.yield <= last).length;
+  return Math.round((below / points.length) * 100);
+}
+
+/**
+ * 自选股近期分红日程：已定除息日的未来分红 + 已公告未定除息日的预案
+ * @param rawList getDividendHistory 原始记录
+ * @param days 未来天数（默认 60）
+ * @param now 当前时间（可注入）
+ * @returns [{exDate, perShare, profile, progress, planNoticeDate}] 除息日升序，未定日期排最后
+ */
+function upcomingDividends(rawList, days, now) {
+  const today = toDateStr(now || new Date());
+  const endDay = toDateStr(new Date((now || new Date()).getTime() + (days || 60) * 24 * 3600 * 1000));
+  const withDate = [];
+  const noDate = [];
+  rawList.forEach((r) => {
+    const perShare = (r.bonusPer10 || 0) / 10;
+    if (perShare <= 0) return;   // 仅现金分红
+    const isDone = r.progress && r.progress.indexOf('实施') >= 0;
+    const exDate = r.exDate;
+    const item = {
+      exDate: exDate || null,
+      perShare: +perShare.toFixed(4),
+      profile: r.profile,
+      progress: r.progress,
+      planNoticeDate: r.planNoticeDate,
+    };
+    if (isDone && exDate && exDate >= today && exDate <= endDay) {
+      withDate.push(item);        // 已实施、除息日为今天或窗口内未来
+    } else if (!isDone && exDate && exDate >= today) {
+      withDate.push(item);        // 已审议通过、除息日已定
+    } else if (!isDone && !exDate) {
+      noDate.push(item);          // 预案阶段，除息日未定
+    }
+  });
+  withDate.sort((a, b) => (a.exDate > b.exDate ? 1 : -1));
+  noDate.sort((a, b) => ((a.planNoticeDate || '') < (b.planNoticeDate || '') ? 1 : -1));
+  return withDate.concat(noDate).slice(0, 10);
+}
+
+module.exports = { parseDividends, calcTTMDividend, aggregateAnnual, calcPayoutRatios, latestFullYear, calcYieldSeries, yieldPercentile, upcomingDividends, toDateStr };
