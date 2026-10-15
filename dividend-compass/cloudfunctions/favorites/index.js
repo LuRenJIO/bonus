@@ -23,6 +23,7 @@ const db = cloud.database();
 const COL = 'favorites';
 const COL_H = 'holdings';
 const COL_A = 'alerts';
+const COL_U = 'users';
 
 async function ensureCollection(col) {
   try {
@@ -168,6 +169,60 @@ async function handleAlertRemove(event) {
   return ok({ removed: true });
 }
 
+/* ---------------- 用户档案（users 集合，权益/偏好预留） ---------------- */
+
+/** 获取或初始化当前用户档案（首次调用自动创建） */
+async function handleUserProfile() {
+  const wxContext = cloud.getWXContext();
+  const openid = wxContext.OPENID;
+  if (!openid) return fail('无法获取用户身份');
+  try {
+    const res = await db.collection(COL_U).where({ _openid: openid }).limit(1).get();
+    if (res.data && res.data.length) return ok(res.data[0]);
+    // 首次创建：_openid 需在服务端手动写入（服务端 add 不自动注入）
+    await ensureCollection(COL_U);
+    const doc = {
+      _openid: openid,
+      createdAt: db.serverDate(),
+      // 权益预留：广告解锁等（二期流量主开通后启用）
+      entitlement: { adUnlocked: false, unlockedAt: null },
+      // 偏好设置预留
+      settings: {},
+    };
+    const added = await db.collection(COL_U).add({ data: doc });
+    return ok(Object.assign({ _id: added._id }, doc));
+  } catch (e) {
+    if (String(e.errCode) === '-502005' || /not exist|不存在/.test(e.errMsg || '')) {
+      await ensureCollection(COL_U);
+      return ok(null);
+    }
+    throw e;
+  }
+}
+
+/** 更新当前用户档案字段（合并写入，用于权益/设置） */
+async function handleUserSet(event) {
+  const wxContext = cloud.getWXContext();
+  const openid = wxContext.OPENID;
+  if (!openid) return fail('无法获取用户身份');
+  const patch = event.patch && typeof event.patch === 'object' ? event.patch : null;
+  if (!patch || !Object.keys(patch).length) return fail('缺少 patch 字段');
+  await ensureCollection(COL_U);
+  const exist = await db.collection(COL_U).where({ _openid: openid }).limit(1).get();
+  if (!exist.data || !exist.data.length) {
+    const doc = Object.assign({
+      _openid: openid,
+      createdAt: db.serverDate(),
+      entitlement: { adUnlocked: false, unlockedAt: null },
+      settings: {},
+    }, patch);
+    const added = await db.collection(COL_U).add({ data: doc });
+    return ok({ _id: added._id });
+  }
+  await db.collection(COL_U).doc(exist.data[0]._id).update({ data: patch });
+  return ok({ updated: true });
+}
+
 exports.main = async (event = {}) => {
   try {
     switch (event.action) {
@@ -180,6 +235,8 @@ exports.main = async (event = {}) => {
       case 'alertList': return await handleAlertList(event);
       case 'alertAdd': return await handleAlertAdd(event);
       case 'alertRemove': return await handleAlertRemove(event);
+      case 'userProfile': return await handleUserProfile(event);
+      case 'userSet': return await handleUserSet(event);
       default: return fail('未知 action: ' + event.action);
     }
   } catch (e) {
