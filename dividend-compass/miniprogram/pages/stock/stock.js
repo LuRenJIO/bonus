@@ -18,7 +18,13 @@ Page({
     favBusy: false,
     alertOn: false,       // 已设股息率提醒
     alertThreshold: null, // 提醒阈值（%）
+    priceMode: 'minute',  // 价格走势：minute=分时 | daily=日K
+    priceLoading: false,
   },
+
+  _priceMinute: null,    // 分时缓存（页面实例级）
+  _priceDaily: null,     // 日K缓存
+  _priceLoading: false,
 
   onLoad(options) {
     this.setData({
@@ -40,6 +46,10 @@ Page({
    * @param force true=绕过云函数缓存强制刷新（刷新按钮/下拉刷新用）
    */
   async loadOverview(force) {
+    if (force === true) {
+      this._priceMinute = null;   // 强刷时价格走势缓存一并失效
+      this._priceDaily = null;
+    }
     if (!this.data.d) this.setData({ loading: true, error: '' });
     try {
       const d = await util.callService('overview', {
@@ -62,6 +72,7 @@ Page({
         if (d.yieldCurve && d.yieldCurve.points && d.yieldCurve.points.length >= 2) {
           this.drawYieldChart();   // setData 回调内绘制，确保 canvas 节点已挂载
         }
+        this.loadPriceData();      // 价格走势卡懒加载（默认分时）
       });
     } catch (e) {
       this.setData({ loading: false, error: e.message || '加载失败' });
@@ -109,6 +120,186 @@ Page({
       url: '/pages/reinvest/reinvest?code=' + this.data.code + '&name=' +
         encodeURIComponent(this.data.name) + '&market=' + this.data.market,
     });
+  },
+
+  /* ---------- 价格走势（分时/日K，懒加载 + 页面实例缓存） ---------- */
+  loadPriceData() {
+    if (this._priceLoading) return;
+    const mode = this.data.priceMode;
+    const cached = mode === 'minute' ? this._priceMinute : this._priceDaily;
+    if (cached) {
+      this.drawPrice(1);
+      return;
+    }
+    this._priceLoading = true;
+    this.setData({ priceLoading: true });
+    util.callService('indexChart', {
+      code: this.data.code,
+      market: this.data.market,
+      mode: mode === 'daily' ? 'history' : 'minute',
+      range: '1y',
+    }).then((d) => {
+      if (mode === 'minute') this._priceMinute = d; else this._priceDaily = d;
+      this._priceLoading = false;
+      this.setData({ priceLoading: false }, () => this.drawPrice(1));
+    }).catch(() => {
+      this._priceLoading = false;
+      this.setData({ priceLoading: false });   // 静默：价格走势失败不影响详情页其它功能
+    });
+  },
+
+  onPriceModeTap(e) {
+    const mode = e.currentTarget.dataset.mode;
+    if (mode === this.data.priceMode) return;
+    this.setData({ priceMode: mode });
+    this.loadPriceData();
+  },
+
+  drawPrice(attempt) {
+    const d = this.data.priceMode === 'minute' ? this._priceMinute : this._priceDaily;
+    if (!d) return;
+    const query = wx.createSelectorQuery();
+    query.select('#priceCanvas').fields({ node: true, size: true });
+    query.exec((res) => {
+      if (!res || !res[0] || !res[0].node || !res[0].width) {
+        if (attempt < 3) setTimeout(() => this.drawPrice(attempt + 1), 200);
+        return;
+      }
+      try {
+        const canvas = res[0].node;
+        let dpr = 2;
+        try { dpr = wx.getWindowInfo ? wx.getWindowInfo().pixelRatio : 2; } catch (err) { /* 默认2 */ }
+        canvas.width = res[0].width * dpr;
+        canvas.height = res[0].height * dpr;
+        const ctx = canvas.getContext('2d');
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.scale(dpr, dpr);
+        ctx.clearRect(0, 0, res[0].width, res[0].height);
+        if (this.data.priceMode === 'minute') this.renderPriceMinute(ctx, res[0].width, res[0].height, d);
+        else this.renderPriceDaily(ctx, res[0].width, res[0].height, d);
+      } catch (e) { /* canvas 异常静默 */ }
+    });
+  },
+
+  renderPriceMinute(ctx, W, H, d) {
+    const points = d.points || [];
+    if (points.length < 2) return;
+    const padL = 8, padR = 58, padT = 18, padB = 20;
+    const plotW = W - padL - padR, plotH = H - padT - padB;
+    const prices = points.map((p) => p.price);
+    let lo = Math.min(d.preClose, Math.min.apply(null, prices));
+    let hi = Math.max(d.preClose, Math.max.apply(null, prices));
+    const pad = (hi - lo) * 0.08 || hi * 0.002;
+    lo -= pad; hi += pad;
+
+    const n = points.length;
+    const xs = points.map((_, i) => padL + (plotW * i) / (n - 1));
+    const ys = prices.map((p) => padT + plotH * (1 - (p - lo) / (hi - lo)));
+    const yBase = padT + plotH * (1 - (d.preClose - lo) / (hi - lo));
+    const up = prices[n - 1] >= d.preClose;
+    const lineColor = up ? '#f04b5a' : '#00b578';
+
+    // 昨收虚线 + 标签
+    ctx.setLineDash([4, 4]);
+    ctx.beginPath();
+    ctx.moveTo(padL, yBase);
+    ctx.lineTo(padL + plotW, yBase);
+    ctx.strokeStyle = 'rgba(212, 169, 78, 0.7)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = '#d4a94e';
+    ctx.font = '10px sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText('昨收 ' + d.preClose.toFixed(2), padL + plotW + 5, yBase + 3);
+    // 现价标签
+    ctx.fillStyle = lineColor;
+    ctx.fillText(prices[n - 1].toFixed(2), padL + plotW + 5, ys[n - 1] + 3);
+
+    // 折线 + 面积
+    ctx.beginPath();
+    xs.forEach((x, i) => { if (i === 0) ctx.moveTo(x, ys[i]); else ctx.lineTo(x, ys[i]); });
+    ctx.strokeStyle = lineColor;
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    const grad = ctx.createLinearGradient(0, padT, 0, padT + plotH);
+    grad.addColorStop(0, up ? 'rgba(240, 75, 90, 0.16)' : 'rgba(0, 181, 120, 0.16)');
+    grad.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.lineTo(xs[n - 1], padT + plotH);
+    ctx.lineTo(xs[0], padT + plotH);
+    ctx.closePath();
+    ctx.fillStyle = grad;
+    ctx.fill();
+
+    // x 轴
+    ctx.fillStyle = '#59626d';
+    ctx.textAlign = 'left';
+    ctx.fillText('09:30', padL, H - 5);
+    ctx.textAlign = 'center';
+    ctx.fillText('11:30/13:00', padL + plotW / 2, H - 5);
+    ctx.textAlign = 'right';
+    ctx.fillText('15:00', padL + plotW, H - 5);
+  },
+
+  renderPriceDaily(ctx, W, H, d) {
+    const points = d.points || [];
+    if (points.length < 2) return;
+    const padL = 8, padR = 58, padT = 18, padB = 20;
+    const plotW = W - padL - padR, plotH = H - padT - padB;
+    const prices = points.map((p) => p.price);
+    let lo = Math.min.apply(null, prices);
+    let hi = Math.max.apply(null, prices);
+    const pad = (hi - lo) * 0.06 || hi * 0.002;
+    lo -= pad; hi += pad;
+
+    const n = points.length;
+    const xs = points.map((_, i) => padL + (plotW * i) / (n - 1));
+    const ys = prices.map((p) => padT + plotH * (1 - (p - lo) / (hi - lo)));
+
+    // 网格 3 条 + 右侧价签
+    ctx.strokeStyle = 'rgba(148, 163, 184, 0.12)';
+    ctx.lineWidth = 1;
+    ctx.fillStyle = '#59626d';
+    ctx.font = '10px sans-serif';
+    ctx.textAlign = 'left';
+    for (let g = 0; g <= 3; g++) {
+      const y = padT + (plotH * g) / 3;
+      ctx.beginPath();
+      ctx.moveTo(padL, y);
+      ctx.lineTo(padL + plotW, y);
+      ctx.stroke();
+      const val = hi - ((hi - lo) * g) / 3;
+      ctx.fillText(val.toFixed(0), padL + plotW + 5, y + 3);
+    }
+
+    // 区间涨跌幅（右上）
+    const totalPct = ((prices[n - 1] / prices[0] - 1) * 100).toFixed(1);
+    ctx.fillStyle = Number(totalPct) >= 0 ? '#f04b5a' : '#00b578';
+    ctx.textAlign = 'right';
+    ctx.fillText('近1年 ' + (Number(totalPct) >= 0 ? '+' : '') + totalPct + '%', padL + plotW, padT - 6);
+
+    // 金色折线 + 面积
+    ctx.beginPath();
+    xs.forEach((x, i) => { if (i === 0) ctx.moveTo(x, ys[i]); else ctx.lineTo(x, ys[i]); });
+    ctx.strokeStyle = '#d4a94e';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    const grad = ctx.createLinearGradient(0, padT, 0, padT + plotH);
+    grad.addColorStop(0, 'rgba(212, 169, 78, 0.18)');
+    grad.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.lineTo(xs[n - 1], padT + plotH);
+    ctx.lineTo(xs[0], padT + plotH);
+    ctx.closePath();
+    ctx.fillStyle = grad;
+    ctx.fill();
+
+    // x 轴 5 个采样标签（MM月）
+    ctx.fillStyle = '#59626d';
+    for (let g = 0; g < 5; g++) {
+      const idx = Math.round((n - 1) * g / 4);
+      ctx.textAlign = g === 0 ? 'left' : g === 4 ? 'right' : 'center';
+      ctx.fillText(points[idx].d.slice(5, 7) + '月', xs[idx], H - 5);
+    }
   },
 
   /* ---------- 股息率提醒（阈值 + 订阅消息推送） ---------- */

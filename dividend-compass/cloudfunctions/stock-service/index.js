@@ -275,11 +275,11 @@ async function handleCheckAlerts(event) {
   return ok(out);
 }
 
-/* ---------------- 指数走势（分时/历史） ---------------- */
+/* ---------------- 指数/个股走势（分时/历史） ---------------- */
 async function handleIndexChart(event) {
   const code = String(event.code || '').trim();
   if (!/^\d{6}$/.test(code)) return fail('指数代码格式错误');
-  const market = event.market || 'SH';
+  const market = event.market || (/^(6|9)/.test(code) ? 'SH' : 'SZ');
 
   if (event.mode === 'history') {
     const range = event.range === '5y' ? '5y' : '1y';

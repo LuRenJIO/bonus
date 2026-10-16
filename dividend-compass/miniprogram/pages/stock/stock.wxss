@@ -346,6 +346,15 @@
   font-weight: 600;
 }
 
+/* ================= 价格走势 ================= */
+.price-canvas { width: 100%; height: 300rpx; }
+.price-note {
+  font-size: 20rpx;
+  color: var(--text-dim);
+  margin-top: 10rpx;
+  line-height: 1.6;
+}
+
 /* ================= 波动与风险 ================= */
 .risk-grid { display: flex; }
 .risk-item {

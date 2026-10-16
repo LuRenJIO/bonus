@@ -249,6 +249,25 @@
       </view>
     </view>
 
+    <!-- ============ 价格走势（分时/日K 可切换） ============ -->
+    <view class="card">
+      <view class="card-title">
+        <text>价格走势</text>
+        <view class="pred-tabs">
+          <view class="pred-tab {{priceMode === 'minute' ? 'active' : ''}}" data-mode="minute" bindtap="onPriceModeTap">分时</view>
+          <view class="pred-tab {{priceMode === 'daily' ? 'active' : ''}}" data-mode="daily" bindtap="onPriceModeTap">日K</view>
+        </view>
+      </view>
+      <view wx:if="{{priceLoading}}" class="loading-box" style="padding: 20rpx 0 30rpx;">加载中…</view>
+      <block wx:else>
+        <view class="cv-wrap">
+          <canvas type="2d" id="priceCanvas" class="price-canvas"></canvas>
+        </view>
+        <view class="price-note" wx:if="{{priceMode === 'minute'}}">按分钟采样 · 金虚线为昨收价 · 线色随涨跌</view>
+        <view class="price-note" wx:else>近1年不复权收盘价 · 右上角为区间涨跌幅</view>
+      </block>
+    </view>
+
     <!-- ============ 波动与风险 ============ -->
     <view class="card" wx:if="{{d.risk}}">
       <view class="card-title">
