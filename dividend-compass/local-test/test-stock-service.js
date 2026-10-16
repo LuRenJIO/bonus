@@ -317,7 +317,7 @@ function assert(cond, msg) {
     const rM = await fn.main({ action: 'indexChart', code: '000922', market: 'SH', mode: 'minute' });
     assert(rM.success, '分时成功');
     assert(rM.data.preClose > 0, '昨收: ' + rM.data.preClose);
-    assert(rM.data.points.length >= 100, '分时点位 >= 100: ' + rM.data.points.length);
+    assert(rM.data.points.length >= 10, '分时点位 >= 10（盘中随时间增长至242）: ' + rM.data.points.length);
     assert(/^\d{2}:\d{2}$/.test(rM.data.points[0].t), '时间格式: ' + rM.data.points[0].t);
     assert(rM.data.points.every((p) => p.price > 0), '分时价格均为正');
     console.log('  [分时] ' + rM.data.points.length + ' 点 (' + rM.data.points[0].t + '~' + rM.data.points[rM.data.points.length - 1].t + ') 昨收 ' + rM.data.preClose);

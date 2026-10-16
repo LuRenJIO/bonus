@@ -397,17 +397,18 @@ async function getIndexMonthlyCloses(n) {
   return out.length >= 2 ? out : null;
 }
 
-/** 指数日K收盘序列（近 n 个交易日）：腾讯两域名回退 → 新浪兜底 */
+/** 指数日K收盘序列（近 n 个交易日）：腾讯双域名 → 新浪兜底（单源 6s 超时，防总耗时超函数上限） */
 async function getDailyCloses(code, market, n) {
   const sym = String(market || 'SH').toLowerCase() + code;
   const want = n || 260;
 
   // 1) 腾讯 fqkline（web.ifzq / proxy.finance 同构，双域名防限流）
-  for (const host of ['web.ifzq.gtimg.cn', 'proxy.finance.qq.com']) {
+  for (const host of ['proxy.finance.qq.com', 'web.ifzq.gtimg.cn']) {
     try {
       const url = 'https://' + host + '/ifzqgtimg/appstock/app/fqkline/get?param=' +
         sym + ',day,,,' + want + ',';
-      const j = await getJSON(url, { Referer: 'https://gu.qq.com/' });
+      const text = await httpGet(url, { headers: { Referer: 'https://gu.qq.com/' }, timeout: 6000 });
+      const j = JSON.parse(text);
       const node = j && j.data && j.data[sym];
       const rows = (node && (node.day || node.qfqday)) || [];
       const out = rows.map((r) => ({ date: String(r[0]), close: parseFloat(r[2]) }))
@@ -420,7 +421,7 @@ async function getDailyCloses(code, market, n) {
   try {
     const url = 'https://quotes.sina.cn/cn/api/jsonp_v2.php/var/CN_MarketDataService.getKLineData' +
       '?symbol=' + sym + '&scale=240&ma=no&datalen=' + want;
-    const text = await httpGet(url, { Referer: 'https://finance.sina.com.cn/' });
+    const text = await httpGet(url, { headers: { Referer: 'https://finance.sina.com.cn/' }, timeout: 6000 });
     const m = /\((\[[\s\S]*\])\)/.exec(text);
     const arr = m ? JSON.parse(m[1]) : [];
     const out = arr.map((r) => ({ date: String(r.day || ''), close: parseFloat(r.close) }))
@@ -456,37 +457,62 @@ async function getIndexPreClose(sym) {
 }
 
 /**
- * 指数分时数据（腾讯 minute/query，双域名回退：限流时返回200空数据，需在循环内校验点数）
+ * 指数分时数据。源链（单源 5~6s 超时，防总耗时撞函数上限）：
+ *   1. 腾讯 minute/query 双域名（proxy.finance 优先——云端同腾讯内网可达性最好）
+ *   2. 东财 push2his trends2（云端可达；限流时返回200空数据，需校验点数）
+ * 新浪 5 分钟K对中证系指数返回陈旧数据，已弃用。
  * @returns {preClose, points:[{t:'09:30', price}]} 或 null
  */
 async function getIndexMinute(code, market) {
   const sym = String(market || 'SH').toLowerCase() + code;
-  const [minuteRes, preClose] = await Promise.all([
-    (async () => {
-      for (const host of ['web.ifzq.gtimg.cn', 'proxy.finance.qq.com']) {
-        try {
-          const mText = await httpGet('https://' + host + '/ifzqgtimg/appstock/app/minute/query?code=' + sym,
-            { Referer: 'https://gu.qq.com/' });
-          const j = JSON.parse(mText);
-          const node = j && j.data && j.data[sym];
-          const arr = (node && node.data && node.data.data) || [];
-          const points = arr.map((s) => {
-            const f = String(s).split(' ');
-            const hhmm = f[0] || '';
-            return {
-              t: hhmm.replace(/^(\d{2})(\d{2})$/, '$1:$2'),
-              price: parseFloat(f[1]),
-            };
-          }).filter((x) => /^\d{2}:\d{2}$/.test(x.t) && isFinite(x.price) && x.price > 0);
-          if (points.length >= 10) return points;   // 有效才返回，否则切下一域名
-        } catch (e) { /* 尝试下一域名 */ }
-      }
-      return null;
-    })(),
+  const secid = (String(market || 'SH').toUpperCase() === 'SH' ? '1.' : '0.') + code;
+
+  // 腾讯 minute/query（双域名）
+  const tencentMinute = async () => {
+    for (const host of ['proxy.finance.qq.com', 'web.ifzq.gtimg.cn']) {
+      try {
+        const mText = await httpGet('https://' + host + '/ifzqgtimg/appstock/app/minute/query?code=' + sym,
+          { headers: { Referer: 'https://gu.qq.com/' }, timeout: 5000 });
+        const j = JSON.parse(mText);
+        const node = j && j.data && j.data[sym];
+        const arr = (node && node.data && node.data.data) || [];
+        const points = arr.map((s) => {
+          const f = String(s).split(' ');
+          const hhmm = f[0] || '';
+          return {
+            t: hhmm.replace(/^(\d{2})(\d{2})$/, '$1:$2'),
+            price: parseFloat(f[1]),
+          };
+        }).filter((x) => /^\d{2}:\d{2}$/.test(x.t) && isFinite(x.price) && x.price > 0);
+        if (points.length >= 10) return points;   // 有效才返回，否则切下一源
+      } catch (e) { /* 尝试下一源 */ }
+    }
+    return null;
+  };
+
+  // 东财 trends2（分时：data.trends = ["2026-10-15 09:30,5630.30,..."]）
+  const emTrends = async () => {
+    try {
+      const text = await httpGet('https://push2his.eastmoney.com/api/qt/stock/trends2/get?secid=' + secid +
+        '&fields1=f1,f2,f3,f4,f5,f6&fields2=f51,f53&iscr=0&ndays=1',
+        { headers: { Referer: 'https://quote.eastmoney.com/' }, timeout: 6000 });
+      const j = JSON.parse(text);
+      const trends = (j && j.data && j.data.trends) || [];
+      const points = trends.map((s) => {
+        const f = String(s).split(',');
+        return { t: (f[0] || '').slice(11, 16), price: parseFloat(f[1]) };
+      }).filter((x) => /^\d{2}:\d{2}$/.test(x.t) && isFinite(x.price) && x.price > 0);
+      if (points.length >= 10) return points;
+    } catch (e) { /* 兜底失败 */ }
+    return null;
+  };
+
+  const [points, preClose] = await Promise.all([
+    (async () => (await tencentMinute()) || (await emTrends()))(),
     getIndexPreClose(sym),
   ]);
-  if (!minuteRes || !preClose) return null;
-  return { preClose, points: minuteRes };
+  if (!points || !preClose) return null;
+  return { preClose, points };
 }
 
 /* ---------------- 8. 全市场估值快照（东财 datacenter 估值分析报表） ---------------- */
@@ -642,8 +668,8 @@ module.exports = {
   getAnalystConsensus: withRetry(getAnalystConsensus, 1),
   getMonthlyCloses: withRetry(getMonthlyCloses, 1),
   getIndexMonthlyCloses: withRetry(getIndexMonthlyCloses, 1),
-  getDailyCloses: withRetry(getDailyCloses, 1),
-  getIndexMinute: withRetry(getIndexMinute, 1),
+  getDailyCloses: getDailyCloses,       // 内部已多源回退+限时，不再外层重试（防撞函数超时）
+  getIndexMinute: getIndexMinute,       // 同上
   getExDividendCalendar: withRetry(getExDividendCalendar, 1),
   getValuationSnapshot: withRetry(getValuationSnapshot, 1),
   getMarketDividendEvents: withRetry(getMarketDividendEvents, 1),
