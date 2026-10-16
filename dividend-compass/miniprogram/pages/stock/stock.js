@@ -172,7 +172,15 @@ Page({
     if (!pts || pts.length < 2) return;
     const t = e.touches && e.touches[0];
     if (!t) return;
-    const idx = Math.max(0, Math.min(pts.length - 1, Math.round(((t.x - geo.padL) / geo.plotW) * (pts.length - 1))));
+    let idx;
+    if (this.data.priceMode === 'minute') {
+      // 横轴固定为全天 240 分钟槽位，按触摸位置找最近分钟点
+      const slot = Math.round(((t.x - geo.padL) / geo.plotW) * 240);
+      idx = util.nearestIndexBySlot(this._priceSlots || [], slot);
+    } else {
+      idx = Math.round(((t.x - geo.padL) / geo.plotW) * (pts.length - 1));
+    }
+    idx = Math.max(0, Math.min(pts.length - 1, idx));
     if (this._priceCrossIdx === idx) return;
     this._priceCrossIdx = idx;
     this.drawPrice();
@@ -247,7 +255,10 @@ Page({
     const pts = this.pricePoints();
     if (!geo || !pts) return;
     const i = Math.min(this._priceCrossIdx, pts.length - 1);
-    const x = geo.padL + (geo.plotW * i) / (pts.length - 1);
+    const frac = this.data.priceMode === 'minute'
+      ? (this._priceSlots && this._priceSlots[i] !== undefined ? this._priceSlots[i] / 240 : i / (pts.length - 1))
+      : i / (pts.length - 1);
+    const x = geo.padL + geo.plotW * frac;
     const y = geo.padT + geo.plotH * (1 - (pts[i].price - geo.lo) / (geo.hi - geo.lo));
     ctx.setLineDash([3, 4]);
     ctx.strokeStyle = 'rgba(230, 237, 243, 0.55)';
@@ -277,8 +288,12 @@ Page({
     lo -= pad; hi += pad;
     this._priceGeo = { padL, padT, plotW, plotH, lo, hi };
 
+    // 横轴固定代表全天 09:30~15:00（240 分钟槽位含午休）：
+    // 盘中只画到最新点位置，右侧留白，时间刻度语义正确
+    const slots = points.map((p) => util.minuteSlot(p.t));
+    this._priceSlots = slots;
     const n = points.length;
-    const xs = points.map((_, i) => padL + (plotW * i) / (n - 1));
+    const xs = slots.map((s) => padL + (plotW * s) / 240);
     const ys = prices.map((p) => padT + plotH * (1 - (p - lo) / (hi - lo)));
     const yBase = padT + plotH * (1 - (d.preClose - lo) / (hi - lo));
     const up = prices[n - 1] >= d.preClose;

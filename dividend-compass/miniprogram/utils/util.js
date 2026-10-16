@@ -68,6 +68,30 @@ function addRecent(stock) {
 }
 
 /**
+ * 分时时间 → 全天分钟槽位（0~240），横轴固定代表 09:30~15:00 含午休
+ * '10:30' → 60；'11:30' → 120；'13:01' → 121；'15:00' → 240
+ */
+function minuteSlot(t) {
+  const p = String(t || '').split(':');
+  const m = (parseInt(p[0], 10) || 0) * 60 + (parseInt(p[1], 10) || 0);
+  if (m <= 690) return m - 570;    // 09:30~11:30
+  return m - 660;                  // 13:00~15:00（扣除90分钟午休）
+}
+
+/** 二分查找 slots 中与 target 最接近的索引（slots 升序） */
+function nearestIndexBySlot(slots, target) {
+  if (!slots || !slots.length) return 0;
+  let lo = 0, hi = slots.length - 1;
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1;
+    if (slots[mid] < target) lo = mid + 1; else hi = mid;
+  }
+  // lo 为首个 >= target 的索引，比较前后取更近者
+  if (lo > 0 && Math.abs(slots[lo - 1] - target) <= Math.abs(slots[lo] - target)) return lo - 1;
+  return lo;
+}
+
+/**
  * 股息率阶梯：预期分红 ÷ 各档股息率 → 对应买入参考价
  * @param dividend 预期每股分红（元，中性预测）
  * @param price 现价（元）
@@ -103,4 +127,6 @@ module.exports = {
   getRecent,
   addRecent,
   buildLadder,
+  minuteSlot,
+  nearestIndexBySlot,
 };

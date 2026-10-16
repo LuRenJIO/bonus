@@ -139,7 +139,15 @@ Page({
     if (!pts || pts.length < 2) return;
     const t = e.touches && e.touches[0];
     if (!t) return;
-    const idx = Math.max(0, Math.min(pts.length - 1, Math.round(((t.x - geo.padL) / geo.plotW) * (pts.length - 1))));
+    let idx;
+    if (this.data.mode === 'minute') {
+      // 横轴固定为全天 240 分钟槽位，按触摸位置找最近分钟点
+      const slot = Math.round(((t.x - geo.padL) / geo.plotW) * 240);
+      idx = util.nearestIndexBySlot(this._slots || [], slot);
+    } else {
+      idx = Math.round(((t.x - geo.padL) / geo.plotW) * (pts.length - 1));
+    }
+    idx = Math.max(0, Math.min(pts.length - 1, idx));
     if (this._crossIdx === idx) return;   // 未跨点不重绘
     this._crossIdx = idx;
     this.draw();
@@ -231,13 +239,16 @@ Page({
     ctx.fill();
   },
 
-  /** 十字光标（按住滑动） */
+  /** 十字光标（按住滑动）：分时按分钟槽位定位，历史按点序线性定位 */
   renderCrosshair(ctx) {
     const geo = this._geo;
     const pts = this.currentPoints();
     if (!geo || !pts) return;
     const i = Math.min(this._crossIdx, pts.length - 1);
-    const x = geo.padL + (geo.plotW * i) / (pts.length - 1);
+    const frac = this.data.mode === 'minute'
+      ? (this._slots && this._slots[i] !== undefined ? this._slots[i] / 240 : i / (pts.length - 1))
+      : i / (pts.length - 1);
+    const x = geo.padL + geo.plotW * frac;
     const y = geo.padT + geo.plotH * (1 - (pts[i].price - geo.lo) / (geo.hi - geo.lo));
     ctx.setLineDash([3, 4]);
     ctx.strokeStyle = 'rgba(230, 237, 243, 0.55)';
@@ -267,8 +278,12 @@ Page({
     lo -= pad; hi += pad;
     this._geo = { padL, padT, plotW, plotH, lo, hi };
 
+    // 横轴固定代表全天 09:30~15:00（240 分钟槽位含午休）：
+    // 盘中只画到最新点位置，右侧留白，时间刻度语义正确
+    const slots = d.points.map((p) => util.minuteSlot(p.t));
+    this._slots = slots;
     const n = d.points.length;
-    const xs = d.points.map((_, i) => padL + (plotW * i) / (n - 1));
+    const xs = slots.map((s) => padL + (plotW * s) / 240);
     const ys = prices.map((p) => padT + plotH * (1 - (p - lo) / (hi - lo)));
     const yBase = padT + plotH * (1 - (d.preClose - lo) / (hi - lo));
     const up = prices[prices.length - 1] >= d.preClose;
