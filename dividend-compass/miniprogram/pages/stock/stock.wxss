@@ -348,6 +348,16 @@
 
 /* ================= 价格走势 ================= */
 .price-canvas { width: 100%; height: 300rpx; }
+.price-press-bar {
+  display: flex;
+  align-items: baseline;
+  gap: 20rpx;
+  padding: 4rpx 4rpx 8rpx;
+  min-height: 48rpx;
+}
+.pp-time { font-size: 24rpx; color: var(--text-sub); }
+.pp-price { font-size: 30rpx; font-weight: 700; }
+.pp-chg { font-size: 24rpx; font-weight: 600; }
 .price-note {
   font-size: 20rpx;
   color: var(--text-dim);

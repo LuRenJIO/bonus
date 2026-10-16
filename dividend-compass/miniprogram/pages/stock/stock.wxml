@@ -49,6 +49,33 @@
       </view>
     </view>
 
+    <!-- ============ 价格走势（分时/日K 可切换，支持滑动查看） ============ -->
+    <view class="card">
+      <view class="card-title">
+        <text>价格走势</text>
+        <view class="pred-tabs">
+          <view class="pred-tab {{priceMode === 'minute' ? 'active' : ''}}" data-mode="minute" bindtap="onPriceModeTap">分时</view>
+          <view class="pred-tab {{priceMode === 'daily' ? 'active' : ''}}" data-mode="daily" bindtap="onPriceModeTap">日K</view>
+        </view>
+      </view>
+      <view wx:if="{{priceLoading}}" class="loading-box" style="padding: 20rpx 0 30rpx;">加载中…</view>
+      <block wx:else>
+        <view class="price-press-bar" wx:if="{{pricePress}}">
+          <text class="pp-time num">{{pricePress.time}}</text>
+          <text class="pp-price num">{{pricePress.price}}</text>
+          <text class="pp-chg num {{pricePress.chgCls}}">{{pricePress.chgText}}</text>
+        </view>
+        <view class="cv-wrap">
+          <canvas type="2d" id="priceCanvas" class="price-canvas"
+                  bindtouchstart="onPriceTouch" bindtouchmove="onPriceTouch"
+                  bindtouchend="onPriceTouchEnd" bindtouchcancel="onPriceTouchEnd"></canvas>
+        </view>
+        <view class="price-note" wx:if="{{pricePress}}">松开手指返回实时视图</view>
+        <view class="price-note" wx:elif="{{priceMode === 'minute'}}">按住曲线滑动查看每分钟数据 · 金虚线为昨收</view>
+        <view class="price-note" wx:else>按住曲线滑动查看历史点位 · 近1年不复权收盘价</view>
+      </block>
+    </view>
+
     <!-- ============ 股息率核心卡 ============ -->
     <view class="card yield-card">
       <view class="card-title">
@@ -247,25 +274,6 @@
         <text> 分位</text>
         <text class="yc-pos-tag {{fmt.posClass(d.yieldCurve.percentile)}}">{{fmt.posTag(d.yieldCurve.percentile)}}</text>
       </view>
-    </view>
-
-    <!-- ============ 价格走势（分时/日K 可切换） ============ -->
-    <view class="card">
-      <view class="card-title">
-        <text>价格走势</text>
-        <view class="pred-tabs">
-          <view class="pred-tab {{priceMode === 'minute' ? 'active' : ''}}" data-mode="minute" bindtap="onPriceModeTap">分时</view>
-          <view class="pred-tab {{priceMode === 'daily' ? 'active' : ''}}" data-mode="daily" bindtap="onPriceModeTap">日K</view>
-        </view>
-      </view>
-      <view wx:if="{{priceLoading}}" class="loading-box" style="padding: 20rpx 0 30rpx;">加载中…</view>
-      <block wx:else>
-        <view class="cv-wrap">
-          <canvas type="2d" id="priceCanvas" class="price-canvas"></canvas>
-        </view>
-        <view class="price-note" wx:if="{{priceMode === 'minute'}}">按分钟采样 · 金虚线为昨收价 · 线色随涨跌</view>
-        <view class="price-note" wx:else>近1年不复权收盘价 · 右上角为区间涨跌幅</view>
-      </block>
     </view>
 
     <!-- ============ 波动与风险 ============ -->

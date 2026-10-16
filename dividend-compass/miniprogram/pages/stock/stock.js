@@ -49,6 +49,8 @@ Page({
     if (force === true) {
       this._priceMinute = null;   // 强刷时价格走势缓存一并失效
       this._priceDaily = null;
+      this._priceCrossIdx = null;
+      this.setData({ pricePress: null });
     }
     if (!this.data.d) this.setData({ loading: true, error: '' });
     try {
@@ -122,16 +124,22 @@ Page({
     });
   },
 
-  /* ---------- 价格走势（分时/日K，懒加载 + 页面实例缓存） ---------- */
+  /* ---------- 价格走势（分时/日K，懒加载 + 页面实例缓存 + 滑动查看） ---------- */
+  pricePoints() {
+    const d = this.data.priceMode === 'minute' ? this._priceMinute : this._priceDaily;
+    return d ? (d.points || null) : null;
+  },
+
   loadPriceData() {
     if (this._priceLoading) return;
     const mode = this.data.priceMode;
     const cached = mode === 'minute' ? this._priceMinute : this._priceDaily;
     if (cached) {
-      this.drawPrice(1);
+      this.drawPrice();
       return;
     }
     this._priceLoading = true;
+    this._priceCv = null;   // priceLoading 切换会卸载重建 canvas
     this.setData({ priceLoading: true });
     util.callService('indexChart', {
       code: this.data.code,
@@ -141,7 +149,7 @@ Page({
     }).then((d) => {
       if (mode === 'minute') this._priceMinute = d; else this._priceDaily = d;
       this._priceLoading = false;
-      this.setData({ priceLoading: false }, () => this.drawPrice(1));
+      this.setData({ priceLoading: false }, () => this.drawPrice());
     }).catch(() => {
       this._priceLoading = false;
       this.setData({ priceLoading: false });   // 静默：价格走势失败不影响详情页其它功能
@@ -151,21 +159,75 @@ Page({
   onPriceModeTap(e) {
     const mode = e.currentTarget.dataset.mode;
     if (mode === this.data.priceMode) return;
+    this.clearPriceCross();
     this.setData({ priceMode: mode });
     this.loadPriceData();
   },
 
+  /* ---------- 滑动查看：十字光标 + 数据条 ---------- */
+  onPriceTouch(e) {
+    const geo = this._priceGeo;
+    if (!geo) return;
+    const pts = this.pricePoints();
+    if (!pts || pts.length < 2) return;
+    const t = e.touches && e.touches[0];
+    if (!t) return;
+    const idx = Math.max(0, Math.min(pts.length - 1, Math.round(((t.x - geo.padL) / geo.plotW) * (pts.length - 1))));
+    if (this._priceCrossIdx === idx) return;
+    this._priceCrossIdx = idx;
+    this.drawPrice();
+
+    const p = pts[idx];
+    let chgPct, timeLabel;
+    if (this.data.priceMode === 'minute') {
+      chgPct = ((p.price - this._priceMinute.preClose) / this._priceMinute.preClose) * 100;
+      timeLabel = p.t;
+    } else {
+      const prev = pts[idx - 1] || p;
+      chgPct = prev.price > 0 ? (p.price / prev.price - 1) * 100 : 0;
+      timeLabel = p.d.slice(5);   // MM-DD
+    }
+    this.setData({
+      pricePress: {
+        time: timeLabel,
+        price: p.price,
+        chgText: (chgPct >= 0 ? '+' : '') + chgPct.toFixed(2) + '%',
+        chgCls: util.chgClass(chgPct),
+      },
+    });
+  },
+
+  onPriceTouchEnd() {
+    this.clearPriceCross();
+  },
+
+  clearPriceCross() {
+    if (this._priceCrossIdx === undefined || this._priceCrossIdx === null) return;
+    this._priceCrossIdx = null;
+    this.setData({ pricePress: null });
+    this.drawPrice();
+  },
+
   drawPrice(attempt) {
-    const d = this.data.priceMode === 'minute' ? this._priceMinute : this._priceDaily;
-    if (!d) return;
-    const query = wx.createSelectorQuery();
-    query.select('#priceCanvas').fields({ node: true, size: true });
-    query.exec((res) => {
-      if (!res || !res[0] || !res[0].node || !res[0].width) {
-        if (attempt < 3) setTimeout(() => this.drawPrice(attempt + 1), 200);
-        return;
-      }
-      try {
+    const at = attempt || 1;
+    const paint = (ctx, W, H) => {
+      const d = this.data.priceMode === 'minute' ? this._priceMinute : this._priceDaily;
+      if (!d) return;
+      ctx.clearRect(0, 0, W, H);
+      if (this.data.priceMode === 'minute') this.renderPriceMinute(ctx, W, H, d);
+      else this.renderPriceDaily(ctx, W, H, d);
+      if (this._priceCrossIdx !== undefined && this._priceCrossIdx !== null) this.renderPriceCrosshair(ctx);
+    };
+    try {
+      // 已缓存节点直接重绘（滑动高频调用不走 SelectorQuery）
+      if (this._priceCv && this._priceCtx) { paint(this._priceCtx, this._priceW, this._priceH); return; }
+      const query = wx.createSelectorQuery();
+      query.select('#priceCanvas').fields({ node: true, size: true });
+      query.exec((res) => {
+        if (!res || !res[0] || !res[0].node || !res[0].width) {
+          if (at < 3) setTimeout(() => this.drawPrice(at + 1), 200);   // 节点未挂载稍后重试
+          return;
+        }
         const canvas = res[0].node;
         let dpr = 2;
         try { dpr = wx.getWindowInfo ? wx.getWindowInfo().pixelRatio : 2; } catch (err) { /* 默认2 */ }
@@ -174,11 +236,33 @@ Page({
         const ctx = canvas.getContext('2d');
         ctx.setTransform(1, 0, 0, 1, 0, 0);
         ctx.scale(dpr, dpr);
-        ctx.clearRect(0, 0, res[0].width, res[0].height);
-        if (this.data.priceMode === 'minute') this.renderPriceMinute(ctx, res[0].width, res[0].height, d);
-        else this.renderPriceDaily(ctx, res[0].width, res[0].height, d);
-      } catch (e) { /* canvas 异常静默 */ }
-    });
+        this._priceCv = canvas; this._priceCtx = ctx; this._priceW = res[0].width; this._priceH = res[0].height;
+        paint(ctx, res[0].width, res[0].height);
+      });
+    } catch (e) { /* canvas 异常静默 */ }
+  },
+
+  renderPriceCrosshair(ctx) {
+    const geo = this._priceGeo;
+    const pts = this.pricePoints();
+    if (!geo || !pts) return;
+    const i = Math.min(this._priceCrossIdx, pts.length - 1);
+    const x = geo.padL + (geo.plotW * i) / (pts.length - 1);
+    const y = geo.padT + geo.plotH * (1 - (pts[i].price - geo.lo) / (geo.hi - geo.lo));
+    ctx.setLineDash([3, 4]);
+    ctx.strokeStyle = 'rgba(230, 237, 243, 0.55)';
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(x, geo.padT); ctx.lineTo(x, geo.padT + geo.plotH); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(geo.padL, y); ctx.lineTo(geo.padL + geo.plotW, y); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.beginPath();
+    ctx.arc(x, y, 3.5, 0, Math.PI * 2);
+    ctx.fillStyle = '#e6edf3';
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(x, y, 6.5, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(230, 237, 243, 0.4)';
+    ctx.stroke();
   },
 
   renderPriceMinute(ctx, W, H, d) {
@@ -191,6 +275,7 @@ Page({
     let hi = Math.max(d.preClose, Math.max.apply(null, prices));
     const pad = (hi - lo) * 0.08 || hi * 0.002;
     lo -= pad; hi += pad;
+    this._priceGeo = { padL, padT, plotW, plotH, lo, hi };
 
     const n = points.length;
     const xs = points.map((_, i) => padL + (plotW * i) / (n - 1));
@@ -251,6 +336,7 @@ Page({
     let hi = Math.max.apply(null, prices);
     const pad = (hi - lo) * 0.06 || hi * 0.002;
     lo -= pad; hi += pad;
+    this._priceGeo = { padL, padT, plotW, plotH, lo, hi };
 
     const n = points.length;
     const xs = points.map((_, i) => padL + (plotW * i) / (n - 1));
