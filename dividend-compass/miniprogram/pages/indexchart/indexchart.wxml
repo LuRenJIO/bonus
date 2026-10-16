@@ -36,8 +36,8 @@
     </view>
     <view class="cv-wrap">
       <canvas type="2d" id="chartCanvas" class="cv"
-              bindtouchstart="onChartTouch" bindtouchmove="onChartTouch"
-              bindtouchend="onChartTouchEnd" bindtouchcancel="onChartTouchEnd"></canvas>
+              catchtouchstart="onChartTouch" catchtouchmove="onChartTouch"
+              catchtouchend="onChartTouchEnd" catchtouchcancel="onChartTouchEnd"></canvas>
     </view>
     <view class="cv-note" wx:if="{{pressInfo}}">松开手指返回实时视图</view>
     <view class="cv-note" wx:elif="{{mode === 'minute'}}">按住曲线滑动可查看每分钟数据 · 金虚线为昨收价</view>
