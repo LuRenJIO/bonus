@@ -75,6 +75,10 @@ Page({
           this.drawYieldChart();   // setData 回调内绘制，确保 canvas 节点已挂载
         }
         this.loadPriceData();      // 价格走势卡懒加载（默认分时）
+        // 行业对比数据未就绪（筛选器数据集未构建）→ 静默预热，下次进入本页即可见
+        if (!d.industryRank) {
+          util.callService('screener', { page: 1, pageSize: 1 }).catch(() => {});
+        }
       });
     } catch (e) {
       this.setData({ loading: false, error: e.message || '加载失败' });

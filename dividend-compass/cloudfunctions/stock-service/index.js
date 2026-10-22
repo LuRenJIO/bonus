@@ -73,7 +73,14 @@ async function handleOverview(event) {
   // 前端显式刷新（refresh=true）时绕过缓存，保证行情为最新
   if (!event.refresh) {
     const cached = cacheGet(ck, 5 * 60 * 1000);
-    if (cached) return ok(cached);
+    if (cached) {
+      // 行业排名可能在 overview 缓存期间才就绪（筛选器数据集后台预热），命中时重算一次覆盖
+      if (!cached.industryRank && cached.quote && cached.dividend) {
+        const ir = buildIndustryRank(code, cached.quote, { perShare: cached.dividend.ttm ? cached.dividend.ttm.perShare : 0 });
+        if (ir) cached.industryRank = ir;
+      }
+      return ok(cached);
+    }
   }
 
   // 并行抓取七路数据（沪深300月K 带12小时缓存，多个股票共享）
@@ -187,6 +194,12 @@ async function handleOverview(event) {
       calcTime: new Date().toISOString(),
     },
   };
+
+  // 行业排名数据集未就绪 → 七路请求已完成，此时后台预热不再与其竞争限流
+  // （云函数环境下此异步任务可能被冻结，前端兜底会再静默调用一次 screener 保证构建）
+  if (!result.industryRank) {
+    buildScreenerDataset().catch(() => {});
+  }
 
   cacheSet(ck, result);
   return ok(result);
@@ -320,16 +333,20 @@ function toDateStr(d) {
   return dt.getFullYear() + '-' + (m < 10 ? '0' + m : m) + '-' + (day < 10 ? '0' + day : day);
 }
 
-/** 行业股息率排名：从已缓存的全市场数据集聚合同行业（不触发构建，未就绪时返回 null） */
+/** 行业股息率排名：读全市场数据集聚合同行业；未就绪时返回 null（预热由调用方在主请求完成后触发，避免竞争限流） */
 function buildIndustryRank(code, quote, ttm) {
   try {
     const dataset = cacheGet('scr:full', 12 * 3600 * 1000);
-    if (!dataset || !dataset.rows || !dataset.rows.length || !quote || !quote.industryName) return null;
-    const board = quote.industryName;
+    if (!dataset || !dataset.rows || !dataset.rows.length) return null;
+    // 行业名与我的股息率：优先实时行情/实时TTM，缺失时从数据集自身反查兜底
+    const self = dataset.rows.find((r) => r.code === code) || null;
+    const board = (quote && quote.industryName) || (self && self.board) || null;
+    let mine = ttm && ttm.perShare > 0 && quote && quote.price > 0
+      ? +((ttm.perShare / quote.price) * 100).toFixed(2)
+      : (self && self.ttmYield > 0 ? self.ttmYield : null);
+    if (!board || mine === null) return null;
     const peers = dataset.rows.filter((r) => r.board === board && r.ttmYield > 0);
     if (peers.length < 3) return null;
-    const mine = ttm && ttm.perShare > 0 && quote.price > 0 ? +((ttm.perShare / quote.price) * 100).toFixed(2) : null;
-    if (mine === null) return null;
     const rank = peers.filter((r) => r.ttmYield > mine).length + 1;
     const top = peers.slice(0, 3).map((r) => ({ code: r.code, name: r.name, ttmYield: r.ttmYield }));
     return { board, rank, total: peers.length, top, myYield: mine };
