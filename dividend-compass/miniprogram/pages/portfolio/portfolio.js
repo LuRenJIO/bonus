@@ -40,15 +40,17 @@ Page({
       const d = await util.callService('portfolio', {
         holdings: list.map((h) => ({ code: h.code, market: h.market, shares: h.shares, cost: h.cost })),
       });
-      // 现金流月历：柱高归一化（确定+预估两层）
+      // 现金流月历：柱高归一化（确定+预估两层）+ 柱顶数值 JS 侧格式化（WXML 不支持函数调用）
       const cf = d.cashflow || null;
       let cfMax = 1;
       if (cf && cf.months) {
         cf.months.forEach((m) => { cfMax = Math.max(cfMax, m.confirmed + m.estimated); });
         cf.months.forEach((m) => {
+          const total = m.confirmed + m.estimated;
           m.hConf = Math.round((m.confirmed / cfMax) * 130);
           m.hEst = Math.round((m.estimated / cfMax) * 130);
-          m.hasBar = (m.confirmed + m.estimated) > 0;
+          m.hasBar = total > 0;
+          m.valText = total >= 10000 ? (total / 10000).toFixed(1) + '万' : String(Math.round(total));
         });
         cf.confirmedSum = +cf.months.reduce((s, m) => s + m.confirmed, 0).toFixed(2);
         cf.estimatedSum = +cf.months.reduce((s, m) => s + m.estimated, 0).toFixed(2);

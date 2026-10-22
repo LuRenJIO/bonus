@@ -55,7 +55,7 @@
       </view>
       <view class="cf-chart">
         <view class="cf-col" wx:for="{{cashflow.months}}" wx:key="ym">
-          <text class="cf-val num" wx:if="{{item.hasBar}}">{{item.confirmed + item.estimated >= 10000 ? ((item.confirmed + item.estimated) / 10000).toFixed(1) + '万' : Math.round(item.confirmed + item.estimated)}}</text>
+          <text class="cf-val num" wx:if="{{item.hasBar}}">{{item.valText}}</text>
           <view class="cf-stack">
             <view class="cf-bar-est" style="height: {{item.hEst}}rpx" wx:if="{{item.hEst > 0}}"></view>
             <view class="cf-bar-conf" style="height: {{item.hConf}}rpx" wx:if="{{item.hConf > 0}}"></view>
