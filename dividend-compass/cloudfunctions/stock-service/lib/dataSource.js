@@ -572,7 +572,7 @@ async function getValuationSnapshot() {
 
 /* ---------------- 9. 全市场分红事件（近 N 天，分页并行） ---------------- */
 
-/** 近 days 天内除息的全市场分红事件：[{code, name, perShare, exDate}] */
+/** 近 days 天内除息的全市场分红事件：[{code, name, perShare, exDate, reportDate}] */
 async function getMarketDividendEvents(days) {
   const fmt = (dt) => dt.getFullYear() + '-' + String(dt.getMonth() + 1).padStart(2, '0') + '-' + String(dt.getDate()).padStart(2, '0');
   const start = fmt(new Date(Date.now() - days * 24 * 3600 * 1000));
@@ -580,7 +580,7 @@ async function getMarketDividendEvents(days) {
   const filter = "(EX_DIVIDEND_DATE>='" + start + "')(EX_DIVIDEND_DATE<='" + end + "')";
   const pageOf = (pn) => getJSON(
     'https://datacenter-web.eastmoney.com/api/data/v1/get?reportName=RPT_SHAREBONUS_DET' +
-    '&columns=SECURITY_CODE,SECURITY_NAME_ABBR,PRETAX_BONUS_RMB,EX_DIVIDEND_DATE&filter=' + encodeURIComponent(filter) +
+    '&columns=SECURITY_CODE,SECURITY_NAME_ABBR,PRETAX_BONUS_RMB,EX_DIVIDEND_DATE,REPORT_DATE&filter=' + encodeURIComponent(filter) +
     '&pageSize=500&pageNumber=' + pn + '&sortColumns=EX_DIVIDEND_DATE&sortTypes=1',
     { Referer: 'https://data.eastmoney.com/' }
   ).catch(() => null);
@@ -589,7 +589,7 @@ async function getMarketDividendEvents(days) {
   const pages = (first && first.result && first.result.pages) || 0;
   if (!first || !first.result || !first.result.data) return [];
   const others = [];
-  for (let pn = 2; pn <= pages && pn <= 15; pn++) others.push(pageOf(pn));
+  for (let pn = 2; pn <= pages && pn <= 20; pn++) others.push(pageOf(pn));
   const settled = await Promise.all(others);
   const out = [];
   [first].concat(settled).forEach((r) => {
@@ -601,6 +601,7 @@ async function getMarketDividendEvents(days) {
         name: row.SECURITY_NAME_ABBR || row.SECURITY_CODE,
         perShare: +(per10 / 10).toFixed(4),
         exDate: String(row.EX_DIVIDEND_DATE || '').slice(0, 10),
+        reportDate: row.REPORT_DATE ? String(row.REPORT_DATE).slice(0, 10) : null,
       });
     });
   });

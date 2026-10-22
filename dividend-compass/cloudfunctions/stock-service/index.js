@@ -317,36 +317,43 @@ const TREASURY_10Y = {
   asOf: '2026-10-15',      // 配置日期
 };
 
-/** 构建全市场 TTM 股息率数据集（估值快照 × 近365天分红事件聚合） */
+/** 构建全市场 TTM 股息率数据集（估值快照 × 分红事件聚合，报告期口径与详情页一致） */
 async function buildScreenerDataset() {
   const cached = cacheGet('scr:full', 12 * 3600 * 1000);
   if (cached) return cached;
 
   const [valuation, events] = await Promise.all([
     ds.getValuationSnapshot().catch(() => null),
-    ds.getMarketDividendEvents(365).catch(() => []),
+    ds.getMarketDividendEvents(800).catch(() => []),   // 800天窗口：覆盖"最近4个季度报告期"的最坏实施滞后
   ]);
   if (!valuation || !valuation.length) throw new Error('全市场估值快照获取失败');
 
-  // 按 code 聚合近365天每股分红（TTM口径，与详情页一致）
-  const ttmByCode = {};
+  // 按 code 分组（供报告期口径 TTM 计算）
+  const listByCode = {};
   const nameByCode = {};
   events.forEach((e) => {
     if (!/^\d{6}$/.test(e.code) || !(e.perShare > 0) || !e.exDate) return;
-    ttmByCode[e.code] = +(((ttmByCode[e.code] || 0) + e.perShare).toFixed(4));
+    (listByCode[e.code] || (listByCode[e.code] = [])).push({
+      reportDate: e.reportDate,
+      exDate: e.exDate,
+      perShare: e.perShare,
+      hasCash: true,
+    });
     if (!nameByCode[e.code]) nameByCode[e.code] = e.name;
   });
 
   const rows = [];
   valuation.forEach((v) => {
-    const ttm = ttmByCode[v.code];
-    if (!(ttm > 0)) return;   // 近一年无现金分红的不入池
+    const list = listByCode[v.code];
+    if (!list || !list.length) return;   // 窗口内无现金分红的不入池
+    const ttm = div.calcTTMByReport(list);   // 报告期口径，与详情页一致
+    if (!ttm || !(ttm.perShare > 0)) return;
     rows.push({
       code: v.code,
       name: v.name || nameByCode[v.code] || v.code,
       price: v.price,
-      ttmPerShare: ttm,
-      ttmYield: +((ttm / v.price) * 100).toFixed(2),
+      ttmPerShare: ttm.perShare,
+      ttmYield: +((ttm.perShare / v.price) * 100).toFixed(2),
       peTTM: v.peTTM,
       pb: v.pb,
       board: v.board,

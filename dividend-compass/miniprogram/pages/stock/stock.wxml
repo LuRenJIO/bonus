@@ -98,7 +98,7 @@
         </view>
       </view>
 
-      <!-- TTM 分红明细 -->
+      <!-- TTM 分红明细（按报告期） -->
       <view wx:if="{{d.dividend.ttm.detail.length}}" class="ttm-detail">
         <view class="ttm-row" wx:for="{{d.dividend.ttm.detail}}" wx:key="exDate">
           <text class="ttm-date num">{{item.exDate}} 除息</text>

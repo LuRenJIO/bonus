@@ -2,7 +2,9 @@
  * 分红数据解析与股息率计算
  *
  * 核心口径：
- * 1. TTM股息率 = 近365天内已实施除息的每股税前现金分红合计 ÷ 最新股价
+ * 1. TTM股息率 = 最近4个季度报告期（以最新已实施分红的报告期为锚）已实施税前现金分红合计 ÷ 最新股价。
+ *    标准财务滚动口径：如锚为 2026 中报（REPORT_DATE=2026-06-30），则计入 2026中报/2026一季/2025年报/2025三季，
+ *    不含 2025 中报——修正"按除息日滑窗365天"在分红节奏提前/推迟/漂移时的重复计入问题。
  * 2. 年度股息率 = 某分红年度（按报告期归属年）全部已实施分红合计 ÷ 最新股价
  * 3. 分红年度归属：按 REPORT_DATE 的年份聚合（2025-09-30 三季报特别分红 与 2025-12-31 年报分红
  *    均归属 2025 年度），与上市公司"年度利润分配"语义一致
@@ -13,6 +15,82 @@ function toDateStr(d) {
   const m = dt.getMonth() + 1;
   const day = dt.getDate();
   return dt.getFullYear() + '-' + (m < 10 ? '0' + m : m) + '-' + (day < 10 ? '0' + day : day);
+}
+
+/** 季度末日期串映射 */
+const QUARTER_END = { 3: '31', 6: '30', 9: '30', 12: '31' };
+
+/** 锚报告期（YYYY-MM-DD）及其前 count-1 个季度末报告期，升序外的倒序无所谓（调用方逐个查表） */
+function quarterReports(anchor, count) {
+  const y = parseInt(anchor.slice(0, 4), 10);
+  const mm = parseInt(anchor.slice(5, 7), 10);
+  let q = { 3: 0, 6: 1, 9: 2, 12: 3 }[mm];
+  if (q === undefined) q = mm < 6 ? 0 : mm < 9 ? 1 : mm < 12 ? 2 : 3;   // 异常月份归入最近季度
+  const out = [];
+  let yy = y;
+  for (let i = 0; i < count; i++) {
+    const mEnd = [3, 6, 9, 12][q];
+    out.push(yy + '-' + (mEnd < 10 ? '0' + mEnd : mEnd) + '-' + QUARTER_END[mEnd]);
+    q -= 1;
+    if (q < 0) { q = 3; yy -= 1; }
+  }
+  return out;
+}
+
+/**
+ * 报告期口径 TTM（核心实现）：
+ * 1. 截止 endDate 前已实施的现金分红，按报告期去重（同报告期取除息日最新一条）
+ * 2. 锚 = 全部已实施中最新报告期，取锚及其前 3 个季度末报告期
+ * 3. TTM = 这 4 个报告期分红之和（无分红的季度计 0）
+ * @returns {perShare, detail, anchor, wanted}；若集合内无任何报告期数据返回 null（调用方回退滑窗）
+ */
+function calcTTMByReport(implemented, endDate) {
+  const endStr = endDate ? toDateStr(endDate) : toDateStr(new Date());
+  const byReport = {};
+  let hasReport = false;
+  implemented.forEach((it) => {
+    if (!it.hasCash || !(it.perShare > 0) || !it.exDate || it.exDate > endStr) return;
+    if (!it.reportDate) return;
+    hasReport = true;
+    const prev = byReport[it.reportDate];
+    if (!prev || it.exDate > prev.exDate) byReport[it.reportDate] = it;
+  });
+  if (!hasReport) return null;
+  const reports = Object.keys(byReport).sort();
+  const anchor = reports[reports.length - 1];
+  const wanted = quarterReports(anchor, 4);
+  let total = 0;
+  const detail = [];
+  wanted.forEach((rd) => {
+    const it = byReport[rd];
+    if (it) {
+      total += it.perShare;
+      detail.push({
+        exDate: it.exDate,
+        perShare: +it.perShare.toFixed(4),
+        profile: it.profile,
+        bonusYear: it.bonusYear,
+        reportDate: rd,
+      });
+    }
+  });
+  detail.sort((a, b) => (a.reportDate < b.reportDate ? 1 : -1));
+  return { perShare: +total.toFixed(4), detail, anchor, wanted };
+}
+
+/** 旧滑窗口径（近365天求和），仅作报告期字段缺失时的回退 */
+function windowTTM(implemented, endDate) {
+  const endStr = toDateStr(endDate || new Date());
+  const cutoff = toDateStr(new Date(new Date(endStr).getTime() - 365 * 24 * 3600 * 1000));
+  let total = 0;
+  const detail = [];
+  implemented.forEach((it) => {
+    if (it.hasCash && it.exDate && it.exDate > cutoff && it.exDate <= endStr) {
+      total += it.perShare;
+      detail.push({ exDate: it.exDate, perShare: +it.perShare.toFixed(4), profile: it.profile, bonusYear: it.bonusYear });
+    }
+  });
+  return { perShare: +total.toFixed(4), detail };
 }
 
 /**
@@ -50,19 +128,14 @@ function parseDividends(rawList, now) {
   return { implemented, pending, today };
 }
 
-/** 近12个月（TTM）每股现金分红合计 */
+/** TTM 每股现金分红合计（报告期口径；报告期字段缺失时回退滑窗）。返回 {perShare, detail, basis} */
 function calcTTMDividend(implemented) {
-  const cutoff = new Date(Date.now() - 365 * 24 * 3600 * 1000);
-  const cutoffStr = toDateStr(cutoff);
-  let total = 0;
-  const detail = [];
-  implemented.forEach((it) => {
-    if (it.hasCash && it.exDate && it.exDate > cutoffStr) {
-      total += it.perShare;
-      detail.push({ exDate: it.exDate, perShare: +it.perShare.toFixed(4), profile: it.profile, bonusYear: it.bonusYear });
-    }
-  });
-  return { perShare: +total.toFixed(4), detail };
+  const byReport = calcTTMByReport(implemented);
+  if (byReport) {
+    return { perShare: byReport.perShare, detail: byReport.detail, basis: 'report', anchor: byReport.anchor };
+  }
+  const win = windowTTM(implemented);
+  return { perShare: win.perShare, detail: win.detail, basis: 'window' };
 }
 
 /** 按分红年度聚合每股现金分红（仅已实施） */
@@ -119,7 +192,7 @@ function latestFullYear(annualAgg) {
 
 /**
  * 股息率曲线时序：各月末 TTM 股息率 + 预期股息率点
- * 口径与核心 TTM 一致：月末收盘价（不复权）÷ 近365天已实施每股分红
+ * 口径与核心 TTM 一致（报告期口径）：各月末以"该月末前已实施分红"重算 TTM（锚随历史时点滚动）
  * @param implemented parseDividends 结果（降序，内部转升序）
  * @param monthlyCloses dataSource.getMonthlyCloses 结果（升序）
  * @param expectedYield 预期股息率%（中性预测，可 null）
@@ -130,12 +203,8 @@ function calcYieldSeries(implemented, monthlyCloses, expectedYield) {
   const points = [];
   monthlyCloses.forEach((m) => {
     const endStr = monthEndStr(m.ym);
-    const cutoff = new Date(new Date(endStr).getTime() - 365 * 24 * 3600 * 1000);
-    const cutoffStr = toDateStr(cutoff);
-    let ttm = 0;
-    asc.forEach((it) => {
-      if (it.hasCash && it.exDate && it.exDate > cutoffStr && it.exDate <= endStr) ttm += it.perShare;
-    });
+    const r = calcTTMByReport(asc, endStr);
+    const ttm = r ? r.perShare : windowTTM(asc, endStr).perShare;
     points.push({ ym: m.ym, yield: +((ttm / m.close) * 100).toFixed(2) });
   });
   // 从第一个有分红的月份开始，避免曲线前段长期为 0
@@ -212,4 +281,4 @@ function upcomingDividends(rawList, days, now) {
   return withDate.concat(noDate).slice(0, 10);
 }
 
-module.exports = { parseDividends, calcTTMDividend, aggregateAnnual, calcPayoutRatios, latestFullYear, calcYieldSeries, yieldPercentile, upcomingDividends, toDateStr };
+module.exports = { parseDividends, calcTTMDividend, calcTTMByReport, windowTTM, quarterReports, aggregateAnnual, calcPayoutRatios, latestFullYear, calcYieldSeries, yieldPercentile, upcomingDividends, toDateStr };
