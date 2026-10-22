@@ -34,16 +34,42 @@ Page({
     try {
       const list = await util.callFavorites('holdingList');
       if (!list.length) {
-        this.setData({ loading: false, error: '', holdings: [], summary: null });
+        this.setData({ loading: false, error: '', holdings: [], summary: null, cashflow: null });
         return;
       }
       const d = await util.callService('portfolio', {
         holdings: list.map((h) => ({ code: h.code, market: h.market, shares: h.shares, cost: h.cost })),
       });
-      this.setData({ loading: false, error: '', holdings: d.items || [], summary: d.summary || null });
+      // 现金流月历：柱高归一化（确定+预估两层）
+      const cf = d.cashflow || null;
+      let cfMax = 1;
+      if (cf && cf.months) {
+        cf.months.forEach((m) => { cfMax = Math.max(cfMax, m.confirmed + m.estimated); });
+        cf.months.forEach((m) => {
+          m.hConf = Math.round((m.confirmed / cfMax) * 130);
+          m.hEst = Math.round((m.estimated / cfMax) * 130);
+          m.hasBar = (m.confirmed + m.estimated) > 0;
+        });
+        cf.confirmedSum = +cf.months.reduce((s, m) => s + m.confirmed, 0).toFixed(2);
+        cf.estimatedSum = +cf.months.reduce((s, m) => s + m.estimated, 0).toFixed(2);
+      }
+      this.setData({
+        loading: false, error: '',
+        holdings: d.items || [],
+        summary: d.summary || null,
+        cashflow: cf,
+      });
     } catch (e) {
       this.setData({ loading: false, error: e.message || '加载失败' });
     }
+  },
+
+  goTaxCalc() {
+    // 带入今年已收分红作为默认计算基数
+    if (this.data.summary && this.data.summary.yearReceived > 0) {
+      wx.setStorageSync('tax_prefill', this.data.summary.yearReceived);
+    }
+    wx.navigateTo({ url: '/pages/taxcalc/taxcalc' });
   },
 
   /* ---------- 添加/编辑持仓 ---------- */

@@ -276,6 +276,27 @@
       </view>
     </view>
 
+    <!-- ============ 行业股息率对比 ============ -->
+    <view class="card" wx:if="{{d.industryRank}}">
+      <view class="card-title">
+        <text>行业股息率对比</text>
+        <text class="sub">{{d.industryRank.board}}</text>
+      </view>
+      <view class="ir-main">
+        <view class="ir-rank num">第 {{d.industryRank.rank}}<text class="ir-total">/{{d.industryRank.total}}</text></view>
+        <view class="ir-sub">同行业中股息率排名 · 我的 {{d.industryRank.myYield}}%</view>
+      </view>
+      <view class="ir-top">
+        <text class="ir-top-label">行业前三</text>
+        <view class="ir-top-row" wx:for="{{d.industryRank.top}}" wx:key="code"
+              data-code="{{item.code}}" data-name="{{item.name}}" bindtap="goPeer">
+          <text class="ir-top-name">{{index + 1}}. {{item.name}}</text>
+          <text class="ir-top-yld num gold-text">{{item.ttmYield}}%</text>
+        </view>
+      </view>
+      <view class="price-note">排名基于全市场同行业 TTM 股息率（每日更新）</view>
+    </view>
+
     <!-- ============ 波动与风险 ============ -->
     <view class="card" wx:if="{{d.risk}}">
       <view class="card-title">

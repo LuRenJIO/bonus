@@ -9,6 +9,7 @@ Page({
     r: null,            // annualReport 数据
     maxMonth: 1,        // 月份条形归一化
     months: [],         // [{label, val, h}] h=条形高度rpx
+    achievements: [],   // 收息成就徽章
     saving: false,
   },
 
@@ -32,7 +33,17 @@ Page({
         valText: v >= 10000 ? (v / 10000).toFixed(1) + '万' : String(Math.round(v)),   // WXML 不支持函数调用，JS 侧格式化
         h: Math.max(6, Math.round((v / maxMonth) * 150)),
       }));
-      this.setData({ loading: false, r, months, maxMonth });
+      // 收息成就（称号 + 徽章）
+      const total = r.total;
+      const title = total >= 100000 ? '收息传奇' : total >= 50000 ? '收息大师' : total >= 10000 ? '收息老手'
+        : total >= 5000 ? '收息达人' : total >= 1000 ? '初有所成' : '收息新人';
+      const achievements = [
+        { icon: '🏆', label: title, desc: '年度收息 ' + r.total.toFixed(0) + ' 元', on: true },
+        { icon: '📅', label: r.monthsActive >= 12 ? '月月有余' : r.monthsActive >= 6 ? '覆盖过半' : '稳步积累', desc: '分红覆盖 ' + r.monthsActive + ' 个月', on: r.monthsActive >= 6 },
+        { icon: '🌳', label: r.holdingCount >= 5 ? '多元组合' : r.holdingCount >= 3 ? '渐成体系' : '已出发', desc: '持有 ' + r.holdingCount + ' 只收息股', on: r.holdingCount >= 3 },
+      ];
+      r.title = title;
+      this.setData({ loading: false, r, months, maxMonth, achievements });
     } catch (e) {
       this.setData({ loading: false, error: e.message || '加载失败' });
     }
@@ -120,6 +131,10 @@ Page({
     if (r.topStock) {
       ctx.fillText('收息冠军：' + r.topStock.name + ' ' + r.topStock.amount.toFixed(0) + ' 元', 80, 480);
     }
+    // 称号
+    ctx.fillStyle = '#d4a94e';
+    ctx.font = 'bold 32px sans-serif';
+    ctx.fillText('本年度称号：' + (r.title || '收息人'), 80, 535);
     // 月份条形
     const maxM = Math.max.apply(null, r.byMonth) || 1;
     ctx.fillStyle = '#8b949e';

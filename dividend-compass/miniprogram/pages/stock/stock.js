@@ -124,6 +124,14 @@ Page({
     });
   },
 
+  /* ---------- 跳转：行业对比内同业股票 ---------- */
+  goPeer(e) {
+    const d = e.currentTarget.dataset;
+    wx.navigateTo({
+      url: '/pages/stock/stock?code=' + d.code + '&name=' + encodeURIComponent(d.name || ''),
+    });
+  },
+
   /* ---------- 价格走势（分时/日K，懒加载 + 页面实例缓存 + 滑动查看） ---------- */
   pricePoints() {
     const d = this.data.priceMode === 'minute' ? this._priceMinute : this._priceDaily;

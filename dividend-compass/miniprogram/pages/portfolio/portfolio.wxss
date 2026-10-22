@@ -42,6 +42,69 @@
 .ps-val { font-size: 30rpx; font-weight: 700; }
 .ps-label { font-size: 20rpx; color: var(--text-dim); margin-top: 6rpx; }
 
+/* 现金流月历 */
+.cf-chart {
+  display: flex;
+  align-items: flex-end;
+  height: 200rpx;
+  gap: 4rpx;
+}
+.cf-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  height: 100%;
+}
+.cf-val { font-size: 15rpx; color: var(--text-sub); margin-bottom: 4rpx; }
+.cf-stack {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  width: 70%;
+}
+.cf-bar-conf {
+  background: linear-gradient(180deg, #d4a94e, rgba(212, 169, 78, 0.4));
+  border-radius: 4rpx 4rpx 0 0;
+}
+.cf-bar-est {
+  background: rgba(212, 169, 78, 0.22);
+  border: 1rpx dashed rgba(212, 169, 78, 0.45);
+  border-bottom: none;
+  border-radius: 4rpx 4rpx 0 0;
+}
+.cf-label { font-size: 17rpx; color: var(--text-dim); margin-top: 8rpx; }
+.cf-legend { display: flex; gap: 30rpx; margin-top: 16rpx; }
+.cf-lg { display: flex; align-items: center; font-size: 20rpx; color: var(--text-dim); }
+.cf-dot { width: 14rpx; height: 14rpx; border-radius: 4rpx; margin-right: 8rpx; }
+.cf-dot.conf { background: #d4a94e; }
+.cf-dot.est { background: rgba(212, 169, 78, 0.25); border: 1rpx dashed rgba(212, 169, 78, 0.5); }
+.cf-pending { margin-top: 20rpx; padding-top: 16rpx; border-top: 1rpx solid var(--border); }
+.cf-pending-title { font-size: 23rpx; font-weight: 600; color: #e8b95f; }
+.cf-pending-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10rpx 0 0;
+  font-size: 21rpx;
+}
+.cfp-name { color: var(--text-main); }
+.cfp-plan { flex: 1; color: var(--text-dim); margin: 0 16rpx; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cfp-amt { color: var(--gold); font-weight: 600; }
+.cf-note { font-size: 19rpx; color: var(--text-dim); margin-top: 14rpx; line-height: 1.6; }
+
+/* 除息倒计时角标 */
+.pf-nextex {
+  font-size: 18rpx;
+  color: #e8b95f;
+  background: rgba(212, 169, 78, 0.14);
+  border-radius: 6rpx;
+  padding: 2rpx 10rpx;
+  margin-left: 10rpx;
+  font-weight: 600;
+}
+
 /* 标题按钮组 */
 .pf-title-btns { display: flex; gap: 24rpx; }
 .pf-link { font-size: 24rpx; color: #e8b95f; }

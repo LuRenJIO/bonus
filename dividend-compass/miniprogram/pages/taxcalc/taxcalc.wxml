@@ -1,0 +1,63 @@
+<!--taxcalc.wxml 红利税计算器-->
+<view class="page">
+
+  <view class="card">
+    <view class="card-title"><text>输入信息</text><text class="sub">个人投资者 · 差别化税率</text></view>
+    <view class="tc-field">
+      <text class="tc-label">分红总额（税前，元）</text>
+      <input class="tc-in num" type="digit" placeholder="如 2802.42" placeholder-class="tc-ph"
+             value="{{dividend}}" bindinput="onDividendInput" />
+    </view>
+    <view class="tc-field">
+      <text class="tc-label">买入日期</text>
+      <picker mode="date" value="{{buyDate}}" end="{{today}}" bindchange="onBuyDate">
+        <view class="tc-picker num">{{buyDate || '选择买入日期'}}</view>
+      </picker>
+    </view>
+    <view class="tc-field">
+      <text class="tc-label">计划卖出日期</text>
+      <picker mode="date" value="{{sellDate}}" start="{{buyDate || '2000-01-01'}}" bindchange="onSellDate">
+        <view class="tc-picker num">{{sellDate}}</view>
+      </picker>
+    </view>
+    <view class="tc-btn" bindtap="onCalc">计算税后到手</view>
+    <view class="tc-error" wx:if="{{error}}">{{error}}</view>
+  </view>
+
+  <block wx:if="{{result}}">
+    <!-- 结果 -->
+    <view class="card tc-result">
+      <view class="tc-row-main">
+        <view class="tc-label">税后到手分红</view>
+        <view class="tc-net num">{{result.net}}<text class="tc-unit">元</text></view>
+      </view>
+      <view class="tc-grid">
+        <view class="tc-g"><text class="tc-gv num">{{result.days}}天</text><text class="tc-gl">持股期限</text></view>
+        <view class="tc-g"><text class="tc-gv">{{result.rateLabel}}</text><text class="tc-gl">适用税率</text></view>
+        <view class="tc-g"><text class="tc-gv num">{{result.tax}}元</text><text class="tc-gl">应补税额</text></view>
+      </view>
+      <view class="tc-tip" wx:if="{{result.rate > 0}}">税额在卖出股票时按持股期限一次性补缴（券商自动代扣）</view>
+      <view class="tc-tip free" wx:else>持股超1年，分红全额免税</view>
+    </view>
+
+    <!-- 满一年对比 -->
+    <view class="card" wx:if="{{result.heldOneYear}}">
+      <view class="card-title"><text>多持有一年会怎样？</text></view>
+      <view class="tc-hold">
+        <view class="tc-hold-row">
+          <text>持有至 {{result.heldOneYear.date}}（再等 {{result.heldOneYear.daysLeft}} 天）</text>
+        </view>
+        <view class="tc-hold-row">
+          <text>红利税由 {{result.tax}} 元 → 0 元</text>
+          <text class="num gold-text">多拿 {{result.heldOneYear.saveTax}} 元</text>
+        </view>
+      </view>
+      <view class="tc-note">对长期收息人而言，持股满1年后分红免税——这也是红利策略鼓励长期持有的制度设计</view>
+    </view>
+  </block>
+
+  <view class="footer-tip">
+    <view>税率规则：持股超1年免税；1个月至1年（含）10%；1个月以内（含）20%</view>
+    <view>按现行政策估算，具体以税务机关及券商实际扣缴为准</view>
+  </view>
+</view>

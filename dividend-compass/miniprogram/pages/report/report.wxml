@@ -41,6 +41,18 @@
       </view>
     </view>
 
+    <!-- 收息成就 -->
+    <view class="card">
+      <view class="card-title"><text>收息成就</text><text class="sub">本年度称号：{{r.title}}</text></view>
+      <view class="ach-row">
+        <view class="ach-item {{item.on ? 'on' : ''}}" wx:for="{{achievements}}" wx:key="label">
+          <text class="ach-icon">{{item.icon}}</text>
+          <text class="ach-label">{{item.label}}</text>
+          <text class="ach-desc">{{item.desc}}</text>
+        </view>
+      </view>
+    </view>
+
     <!-- 分享图 -->
     <view class="card">
       <view class="card-title"><text>收息人分享卡</text></view>

@@ -47,21 +47,57 @@
       </view>
     </view>
 
+    <!-- 现金流月历 -->
+    <view class="card" wx:if="{{cashflow && cashflow.months.length}}">
+      <view class="card-title">
+        <text>现金流月历</text>
+        <text class="sub">未来12个月 · 每月预计收息</text>
+      </view>
+      <view class="cf-chart">
+        <view class="cf-col" wx:for="{{cashflow.months}}" wx:key="ym">
+          <text class="cf-val num" wx:if="{{item.hasBar}}">{{item.confirmed + item.estimated >= 10000 ? ((item.confirmed + item.estimated) / 10000).toFixed(1) + '万' : Math.round(item.confirmed + item.estimated)}}</text>
+          <view class="cf-stack">
+            <view class="cf-bar-est" style="height: {{item.hEst}}rpx" wx:if="{{item.hEst > 0}}"></view>
+            <view class="cf-bar-conf" style="height: {{item.hConf}}rpx" wx:if="{{item.hConf > 0}}"></view>
+          </view>
+          <text class="cf-label">{{item.label}}</text>
+        </view>
+      </view>
+      <view class="cf-legend">
+        <view class="cf-lg"><view class="cf-dot conf"></view><text>已公告确定 {{cashflow.confirmedSum}} 元</text></view>
+        <view class="cf-lg"><view class="cf-dot est"></view><text>按历史月份预估 {{cashflow.estimatedSum}} 元</text></view>
+      </view>
+      <view class="cf-pending" wx:if="{{cashflow.pendingTotal > 0}}">
+        <view class="cf-pending-title">待实施分红 {{cashflow.pendingCount}} 笔 · 预计 {{cashflow.pendingTotal}} 元（税前）</view>
+        <view class="cf-pending-row" wx:for="{{cashflow.pendingItems}}" wx:key="index">
+          <text class="cfp-name">{{item.name}}</text>
+          <text class="cfp-plan">{{item.profile}}</text>
+          <text class="cfp-amt num">{{item.amount}}元</text>
+        </view>
+      </view>
+      <view class="cf-note">确定层=已公告待实施分红；预估层=按近3年除息月份分布与TTM年分红估算，仅供参考</view>
+    </view>
+
     <!-- 持仓列表 -->
     <view class="card">
       <view class="card-title">
         <text>持仓明细</text>
         <view class="pf-title-btns">
           <text class="pf-link" bindtap="goReport">年度报告</text>
+          <text class="pf-link" bindtap="goTaxCalc">税计算</text>
           <text class="pf-link" bindtap="onToggleForm">+ 添加</text>
         </view>
       </view>
       <view class="pf-row" wx:for="{{holdings}}" wx:key="code"
             data-code="{{item.code}}" data-name="{{item.name}}" data-market="{{item.market}}" bindtap="goStock">
         <view class="pf-left">
-          <view class="pf-name">{{item.name}}</view>
+          <view class="pf-name">
+            {{item.name}}
+            <text class="pf-nextex" wx:if="{{item.nextEx}}">{{item.nextEx.daysLeft === 0 ? '今日除息' : item.nextEx.daysLeft + '天后除息'}}</text>
+          </view>
           <view class="pf-meta num">
             {{item.shares}}股<block wx:if="{{item.cost}}"> · 成本{{item.cost}}元</block>
+            <block wx:if="{{item.pendingAmount > 0}}"> · 待收{{item.pendingAmount}}元</block>
           </view>
         </view>
         <view class="pf-mid">

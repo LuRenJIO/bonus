@@ -7,7 +7,8 @@
     "pages/indexchart/indexchart",
     "pages/screener/screener",
     "pages/report/report",
-    "pages/reinvest/reinvest"
+    "pages/reinvest/reinvest",
+    "pages/taxcalc/taxcalc"
   ],
   "window": {
     "navigationBarBackgroundColor": "#0e1116",

@@ -148,6 +148,10 @@ function assert(cond, msg) {
     assert(rk.maxDrawdown >= 0 && rk.maxDrawdown < 100, '近1年最大回撤合理: ' + rk.maxDrawdown + '%');
     assert(rk.beta !== null && rk.beta > -1 && rk.beta < 4, 'Beta(对沪深300)合理: ' + rk.beta);
     console.log('  [风险指标] 年化波动率 ' + rk.volatility + '% · 最大回撤 ' + rk.maxDrawdown + '% · Beta ' + rk.beta);
+    // 行业股息率排名（新增；数据集未就绪时允许 null）
+    const ir = r.data.industryRank;
+    assert(ir === null || (ir.board && ir.rank >= 1 && ir.total >= 3 && ir.top.length >= 1), '行业股息率排名结构有效: ' + (ir ? ir.board + ' 第' + ir.rank + '/' + ir.total : 'null(数据集未就绪)'));
+    if (ir) console.log('  [行业对比] ' + ir.board + ' 第' + ir.rank + '/' + ir.total + ' · 我的 ' + ir.myYield + '% · 榜首 ' + ir.top[0].name + ' ' + ir.top[0].ttmYield + '%');
 
     // 股息率阶梯（前端纯函数，本地直接验证；用盈利修正中性分红）
     const neutralDiv = p.enhanced ? p.enhanced.range.neutral : p.basic.range.neutral;
@@ -255,8 +259,16 @@ function assert(cond, msg) {
     assert(s.pnl !== null && s.totalCost > 0, '含成本持仓的盈亏已计算: ' + s.pnl + '元 (' + s.pnlPercent + '%)');
     r.data.items.forEach((it) => {
       assert(it.price > 0, it.name + ' 有行情');
-      console.log('  ' + it.name + ': ' + it.shares + '股 × ' + it.price + '元, TTM股息率' + it.ttmYield + '%, 今年已收' + it.yearDividend + '元');
+      console.log('  ' + it.name + ': ' + it.shares + '股 × ' + it.price + '元, TTM股息率' + it.ttmYield + '%, 今年已收' + it.yearDividend + '元'
+        + (it.nextEx ? ' · ' + (it.nextEx.daysLeft === 0 ? '今日除息' : it.nextEx.daysLeft + '天后除息') : '')
+        + (it.pendingAmount > 0 ? ' · 待收' + it.pendingAmount + '元' : ''));
     });
+    // 现金流月历（新增）
+    const cf = r.data.cashflow;
+    assert(cf && cf.months && cf.months.length === 12, '现金流月历12个月: ' + (cf && cf.months ? cf.months.length : '无'));
+    assert(cf.months.every((m) => m.confirmed >= 0 && m.estimated >= 0), '月历金额非负');
+    assert(cf.pendingTotal >= 0 && Array.isArray(cf.pendingItems), '待实施汇总有效: ' + cf.pendingTotal + '元/' + cf.pendingCount + '笔');
+    console.log('  [月历] 未来12个月: 确定' + cf.months.reduce((a, m) => a + m.confirmed, 0).toFixed(0) + '元 + 预估' + cf.months.reduce((a, m) => a + m.estimated, 0).toFixed(0) + '元 · 待实施' + cf.pendingTotal + '元');
     console.log('  [汇总] 市值' + s.totalValue + '元 · 今年已收' + s.yearReceived + '元 · 组合股息率' + s.portfolioYield + '% · 盈亏' + s.pnlPercent + '%');
     // 空持仓
     const rEmpty = await fn.main({ action: 'portfolio', holdings: [] });

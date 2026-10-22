@@ -1,0 +1,55 @@
+/* 红利税计算器 */
+.page { min-height: 100vh; padding-bottom: 60rpx; }
+.tc-field { margin-bottom: 24rpx; }
+.tc-label { font-size: 22rpx; color: var(--text-dim); }
+.tc-in, .tc-picker {
+  margin-top: 10rpx;
+  background: var(--bg);
+  border-radius: 10rpx;
+  height: 76rpx;
+  line-height: 76rpx;
+  padding: 0 20rpx;
+  font-size: 30rpx;
+  font-weight: 600;
+}
+.tc-ph { color: var(--text-dim); }
+.tc-btn {
+  height: 84rpx;
+  line-height: 84rpx;
+  text-align: center;
+  background: var(--gold);
+  color: #1a1d24;
+  font-size: 28rpx;
+  font-weight: 600;
+  border-radius: 42rpx;
+  margin-top: 10rpx;
+}
+.tc-error { font-size: 22rpx; color: #f04b5a; margin-top: 14rpx; }
+
+/* 结果 */
+.tc-row-main { text-align: center; padding: 10rpx 0 20rpx; }
+.tc-net { font-size: 68rpx; font-weight: 700; color: var(--gold); margin-top: 8rpx; }
+.tc-unit { font-size: 26rpx; font-weight: 400; margin-left: 8rpx; }
+.tc-grid { display: flex; border-top: 1rpx solid var(--border); padding-top: 20rpx; }
+.tc-g { flex: 1; display: flex; flex-direction: column; align-items: center; }
+.tc-gv { font-size: 24rpx; font-weight: 600; text-align: center; }
+.tc-gl { font-size: 20rpx; color: var(--text-dim); margin-top: 6rpx; }
+.tc-tip { font-size: 20rpx; color: var(--text-dim); margin-top: 16rpx; line-height: 1.6; }
+.tc-tip.free { color: #00b578; }
+
+/* 满一年对比 */
+.tc-hold-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 12rpx 0;
+  font-size: 25rpx;
+  color: var(--text-sub);
+}
+.tc-note { font-size: 20rpx; color: var(--text-dim); margin-top: 12rpx; line-height: 1.7; }
+.footer-tip {
+  padding: 10rpx 40rpx 40rpx;
+  font-size: 20rpx;
+  color: var(--text-dim);
+  line-height: 1.8;
+  text-align: center;
+}

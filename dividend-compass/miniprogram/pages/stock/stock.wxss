@@ -365,6 +365,22 @@
   line-height: 1.6;
 }
 
+/* ================= 行业股息率对比 ================= */
+.ir-main { display: flex; align-items: baseline; gap: 16rpx; padding: 6rpx 0 14rpx; }
+.ir-rank { font-size: 44rpx; font-weight: 700; color: var(--gold); }
+.ir-total { font-size: 22rpx; font-weight: 400; color: var(--text-dim); margin-left: 4rpx; }
+.ir-sub { font-size: 22rpx; color: var(--text-sub); }
+.ir-top { border-top: 1rpx solid var(--border); padding-top: 12rpx; }
+.ir-top-label { font-size: 20rpx; color: var(--text-dim); }
+.ir-top-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 10rpx 0 0;
+  font-size: 24rpx;
+}
+.ir-top-name { color: var(--text-main); }
+.ir-top-yld { font-weight: 600; }
+
 /* ================= 波动与风险 ================= */
 .risk-grid { display: flex; }
 .risk-item {

@@ -180,6 +180,7 @@ async function handleOverview(event) {
     })(),
     risk: calcRiskMetrics(monthlyCloses, indexCloses),
     health,
+    industryRank: buildIndustryRank(code, quote, ttm),
     meta: {
       perUnassignProfit: perUnassign,
       totalShares,
@@ -309,6 +310,30 @@ async function handleIndexChart(event) {
   const resultM = { kind: 'minute', preClose: d.preClose, points: d.points };
   cacheSet(ckm, resultM);
   return ok(resultM);
+}
+
+/** 日期 → 'YYYY-MM-DD'（本地时区） */
+function toDateStr(d) {
+  const dt = d instanceof Date ? d : new Date(d);
+  const m = dt.getMonth() + 1;
+  const day = dt.getDate();
+  return dt.getFullYear() + '-' + (m < 10 ? '0' + m : m) + '-' + (day < 10 ? '0' + day : day);
+}
+
+/** 行业股息率排名：从已缓存的全市场数据集聚合同行业（不触发构建，未就绪时返回 null） */
+function buildIndustryRank(code, quote, ttm) {
+  try {
+    const dataset = cacheGet('scr:full', 12 * 3600 * 1000);
+    if (!dataset || !dataset.rows || !dataset.rows.length || !quote || !quote.industryName) return null;
+    const board = quote.industryName;
+    const peers = dataset.rows.filter((r) => r.board === board && r.ttmYield > 0);
+    if (peers.length < 3) return null;
+    const mine = ttm && ttm.perShare > 0 && quote.price > 0 ? +((ttm.perShare / quote.price) * 100).toFixed(2) : null;
+    if (mine === null) return null;
+    const rank = peers.filter((r) => r.ttmYield > mine).length + 1;
+    const top = peers.slice(0, 3).map((r) => ({ code: r.code, name: r.name, ttmYield: r.ttmYield }));
+    return { board, rank, total: peers.length, top, myYield: mine };
+  } catch (e) { return null; }
 }
 
 /* ---------------- 红利筛选器（全市场 TTM 股息率，12小时缓存） ---------------- */
@@ -621,10 +646,18 @@ async function handlePortfolio(event) {
   quotes.forEach((q) => { qMap[q.code] = q; });
 
   let totalValue = 0, costedValue = 0, costedCost = 0, hasAnyCost = false, yearTotal = 0, ttmTotal = 0;
+  const now = new Date();
+  const todayStr = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
+  const cashflow = { months: [], pendingTotal: 0, pendingCount: 0, pendingItems: [] };
+  const pendingMap = {};   // ym → confirmed 金额
+  const estMap = {};       // ym → estimated 金额
+
   const items = list.map((h, idx) => {
     const quote = qMap[h.code] || {};
     const price = isNum(quote.price) ? quote.price : null;
-    const { implemented } = div.parseDividends(dividendLists[idx]);
+    const parsed = div.parseDividends(dividendLists[idx]);
+    const implemented = parsed.implemented;
+    const pending = parsed.pending;
     const ttm = div.calcTTMDividend(implemented);
     // 今年已除息的每股分红合计（税前）
     let yearPerShare = 0;
@@ -641,6 +674,67 @@ async function handlePortfolio(event) {
     }
     yearTotal += yearPerShare * h.shares;
     ttmTotal += ttm.perShare * h.shares;
+
+    // 除息倒计时：未来 90 天内最近一次已定除息
+    let nextEx = null;
+    const upcoming = div.upcomingDividends(dividendLists[idx], 90, now);
+    for (const u of upcoming) {
+      if (u.exDate && u.exDate >= todayStr) {
+        nextEx = {
+          date: u.exDate,
+          perShare: u.perShare,
+          profile: u.profile,
+          daysLeft: Math.round((new Date(u.exDate + 'T00:00:00').getTime() - new Date(todayStr + 'T00:00:00').getTime()) / 86400000),
+        };
+        break;
+      }
+    }
+
+    // 待实施分红（已公告未除息的现金分红）
+    const pendCash = pending.filter((p) => p.hasCash && p.perShare > 0);
+    const pendingAmount = pendCash.reduce((s, p) => s + p.perShare * h.shares, 0);
+    cashflow.pendingTotal += pendingAmount;
+    cashflow.pendingCount += pendCash.length;
+    pendCash.forEach((p) => {
+      cashflow.pendingItems.push({
+        code: h.code, name: quote.name || h.code,
+        exDate: p.exDate || null, perShare: p.perShare,
+        amount: +(p.perShare * h.shares).toFixed(2), profile: p.profile,
+      });
+      // 已定除息日 → 现金流月历"确定层"（未来12个月）
+      if (p.exDate && p.exDate >= todayStr) {
+        const ym = p.exDate.slice(0, 7);
+        pendingMap[ym] = (pendingMap[ym] || 0) + p.perShare * h.shares;
+      }
+    });
+
+    // 历史除息月份分布（近3年）→ 估算层权重：年度预期(TTM×份额)按月分摊
+    const monthCount = {};
+    let histTotal = 0;
+    const histStart = toDateStr(now.getTime() - 3 * 365 * 24 * 3600 * 1000);
+    implemented.forEach((it) => {
+      if (it.hasCash && it.exDate && it.exDate >= histStart && it.exDate <= todayStr) {
+        const mo = it.exDate.slice(5, 7);
+        monthCount[mo] = (monthCount[mo] || 0) + 1;
+        histTotal += 1;
+      }
+    });
+    if (histTotal > 0 && ttm.perShare > 0) {
+      const annualEst = ttm.perShare * h.shares;
+      Object.keys(monthCount).forEach((mo) => {
+        const w = monthCount[mo] / histTotal;
+        // 从下月起 12 个月：落在该自然月（任意年）的估算
+        for (let k = 1; k <= 12; k++) {
+          const dt = new Date(now.getFullYear(), now.getMonth() + k, 1);
+          const mo2 = String(dt.getMonth() + 1).padStart(2, '0');
+          if (mo2 === mo) {
+            const ym2 = dt.getFullYear() + '-' + mo2;
+            estMap[ym2] = (estMap[ym2] || 0) + annualEst * w;
+          }
+        }
+      });
+    }
+
     return {
       code: h.code,
       name: quote.name || (dividendLists[idx][0] && dividendLists[idx][0].name) || h.code,
@@ -653,8 +747,25 @@ async function handlePortfolio(event) {
       ttmYield: price !== null && ttm.perShare > 0 ? +((ttm.perShare / price) * 100).toFixed(2) : null,
       yearDividend: +(yearPerShare * h.shares).toFixed(2),   // 今年已收息（税前）
       ttmDividend: +(ttm.perShare * h.shares).toFixed(2),    // 近12个月分红（税前）
+      nextEx,                                                 // 除息倒计时
+      pendingAmount: +pendingAmount.toFixed(2),               // 该持仓待实施金额
     };
   });
+
+  // 现金流月历：下月起 12 个月
+  for (let k = 1; k <= 12; k++) {
+    const dt = new Date(now.getFullYear(), now.getMonth() + k, 1);
+    const ym = dt.getFullYear() + '-' + String(dt.getMonth() + 1).padStart(2, '0');
+    cashflow.months.push({
+      ym,
+      label: (dt.getMonth() + 1) + '月',
+      confirmed: +(pendingMap[ym] || 0).toFixed(2),
+      estimated: +((estMap[ym] || 0)).toFixed(2),
+    });
+  }
+  cashflow.pendingTotal = +cashflow.pendingTotal.toFixed(2);
+  cashflow.pendingItems = cashflow.pendingItems
+    .sort((a, b) => ((a.exDate || '9999') > (b.exDate || '9999') ? 1 : -1)).slice(0, 6);
 
   const summary = {
     count: items.length,
@@ -666,7 +777,7 @@ async function handlePortfolio(event) {
     expectedAnnual: +ttmTotal.toFixed(2),                    // 预期年度分红（按TTM口径）
     portfolioYield: totalValue > 0 ? +((ttmTotal / totalValue) * 100).toFixed(2) : null, // 组合TTM股息率
   };
-  const result = { items, summary };
+  const result = { items, summary, cashflow };
   cacheSet(ck, result);
   return ok(result);
 }
