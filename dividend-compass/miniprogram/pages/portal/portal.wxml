@@ -22,8 +22,14 @@
 
     <!-- 拾息红利 -->
     <view class="mod mod-stock" hover-class="press" bindtap="goStrategy">
+      <view class="deco deco-stock">
+        <view class="kbar k4"></view>
+        <view class="kbar k3"></view>
+        <view class="kbar k2"></view>
+        <view class="kbar k1"></view>
+      </view>
       <view class="mod-row">
-        <view class="mod-ic stock-ic"><ui-icon name="chart" size="44" color="#9fc1f0" /></view>
+        <view class="mod-ic stock-ic-solid"><ui-icon name="chart" size="44" color="#0a0d12" /></view>
         <view class="mod-info">
           <view class="mod-name">拾息红利</view>
           <view class="mod-desc">行情 · 筛选 · 日历 · 记账 · 提醒</view>
@@ -39,8 +45,12 @@
 
     <!-- 拾金观察 -->
     <view class="mod mod-gold" hover-class="press" bindtap="goGold">
+      <view class="deco deco-gold">
+        <view class="coin c2"></view>
+        <view class="coin c1"><text class="coin-y">¥</text></view>
+      </view>
       <view class="mod-row">
-        <view class="mod-ic"><ui-icon name="gold" size="44" /></view>
+        <view class="mod-ic gold-ic-solid"><ui-icon name="gold" size="44" color="#1a1206" /></view>
         <view class="mod-info">
           <view class="mod-name">拾金观察</view>
           <view class="mod-desc">金价 · 走势 · ETF 配置</view>

@@ -23,6 +23,8 @@
 
 /* 模块卡 */
 .mod {
+  position: relative;
+  overflow: hidden;
   margin: 0 24rpx 20rpx;
   border-radius: var(--radius-lg);
   border: 1rpx solid var(--lineh, #2a3442);
@@ -36,23 +38,96 @@
 }
 .mod-soon { border-style: dashed; opacity: 0.6; }
 
-.mod-row { display: flex; align-items: center; gap: 22rpx; }
+/* —— 卡片装饰层（纯 CSS，零资源） —— */
+.deco {
+  position: absolute;
+  right: -6rpx;
+  top: -10rpx;
+  width: 200rpx;
+  height: 170rpx;
+  pointer-events: none;
+}
+
+/* 拾息红利：K线柱群（蓝渐变错落 + 底部基准线） */
+.deco-stock .kbar {
+  position: absolute;
+  bottom: 0;
+  width: 18rpx;
+  border-radius: 4rpx 4rpx 0 0;
+  background: linear-gradient(180deg, rgba(76, 141, 255, 0.42), rgba(76, 141, 255, 0.05));
+}
+.deco-stock .k1 { right: 18rpx; height: 64rpx; }
+.deco-stock .k2 { right: 52rpx; height: 104rpx; }
+.deco-stock .k3 { right: 86rpx; height: 82rpx; }
+.deco-stock .k4 { right: 120rpx; height: 128rpx; }
+.deco-stock::after {
+  content: "";
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: 1rpx;
+  background: rgba(76, 141, 255, 0.28);
+}
+
+/* 拾金观察：双金币（金渐变 + 内环 + ¥ + 光晕） */
+.deco-gold .coin {
+  position: absolute;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #f0d08a, #b8860b);
+  box-shadow: 0 0 30rpx rgba(212, 169, 78, 0.38);
+}
+.deco-gold .coin::before {
+  content: "";
+  position: absolute;
+  inset: 8rpx;
+  border-radius: 50%;
+  border: 2rpx solid rgba(90, 60, 10, 0.35);
+}
+.deco-gold .c1 {
+  right: 14rpx;
+  top: 6rpx;
+  width: 104rpx;
+  height: 104rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.deco-gold .c2 {
+  right: 88rpx;
+  top: 62rpx;
+  width: 56rpx;
+  height: 56rpx;
+  opacity: 0.5;
+}
+.coin-y {
+  font-family: 'DIN Alternate', 'Menlo', monospace;
+  font-size: 40rpx;
+  font-weight: 700;
+  color: rgba(90, 60, 10, 0.55);
+}
+
+.mod-row { display: flex; align-items: center; gap: 22rpx; position: relative; z-index: 1; }
 .mod-ic {
   width: 84rpx;
   height: 84rpx;
   border-radius: 22rpx;
-  border: 1rpx solid rgba(212, 169, 78, 0.35);
-  background: rgba(212, 169, 78, 0.1);
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
 }
-.stock-ic {
-  border-color: #3a4a5e;
-  background: rgba(76, 141, 255, 0.08);
+/* 实底亮色图标容器（深色图标，对比更强） */
+.stock-ic-solid {
+  background: linear-gradient(135deg, #9fc1f0, #4c8dff);
+  box-shadow: 0 6rpx 18rpx rgba(76, 141, 255, 0.3);
 }
-.soon-ic { border-style: dashed; background: transparent; }
+.gold-ic-solid {
+  background: var(--gold-grad);
+  box-shadow: 0 6rpx 18rpx rgba(212, 169, 78, 0.35);
+}
+.soon-ic {
+  border: 1rpx dashed var(--border);
+  background: transparent;
+}
 
 .mod-info { flex: 1; }
 .mod-name { font-size: 30rpx; font-weight: 600; color: var(--text); }
