@@ -87,6 +87,7 @@ Page({
   },
 
   async loadMinute() {
+    this._gcv = null; this._gctx = null;   // 画布即将 hidden：废弃节点缓存，恢复后强制重新初始化
     this.setData({ chartLoading: true });
     try {
       const minute = await util.callService('goldMinute');
@@ -97,6 +98,7 @@ Page({
   },
 
   async loadChart() {
+    this._gcv = null; this._gctx = null;   // 同上
     this.setData({ chartLoading: true });
     try {
       const chart = await util.callService('goldChart', { range: this.data.goldMode });
