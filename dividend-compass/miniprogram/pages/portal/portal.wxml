@@ -22,10 +22,14 @@
 
     <!-- 拾息红利 -->
     <view class="mod mod-stock" hover-class="press" bindtap="goStrategy">
-      <view class="mod-glow stock-glow"></view>
-      <view class="mod-orbit orbit-a stock-orbit"></view>
-      <view class="mod-orbit2 orbit-b stock-orbit2"></view>
-      <view class="mod-dot stock-dot"></view>
+      <view class="deco-kline">
+        <view class="kgrid"></view>
+        <view class="kline k1"><view class="kw"></view><view class="kb up"></view></view>
+        <view class="kline k2"><view class="kw"></view><view class="kb dn"></view></view>
+        <view class="kline k3"><view class="kw"></view><view class="kb up hi"></view></view>
+        <view class="kline k4"><view class="kw"></view><view class="kb up"></view></view>
+        <view class="kbase"></view>
+      </view>
       <view class="mod-row">
         <view class="mod-ic stock-ic-solid"><ui-icon name="chart" size="44" color="#0a0d12" /></view>
         <view class="mod-info">
@@ -43,10 +47,14 @@
 
     <!-- 拾金观察 -->
     <view class="mod mod-gold" hover-class="press" bindtap="goGold">
-      <view class="mod-glow gold-glow-bg"></view>
-      <view class="mod-orbit orbit-a gold-orbit"></view>
-      <view class="mod-orbit2 orbit-b gold-orbit2"></view>
-      <view class="mod-dot gold-dot"></view>
+      <view class="deco-ingot">
+        <view class="ishadow"></view>
+        <view class="ingot ig3"><view class="itop"></view></view>
+        <view class="ingot ig2"><view class="itop"></view><view class="iside"></view></view>
+        <view class="ingot ig1"><view class="itop"></view><view class="iside"></view></view>
+        <view class="ispark sp1"></view>
+        <view class="ispark sp2"></view>
+      </view>
       <view class="mod-row">
         <view class="mod-ic gold-ic-solid"><ui-icon name="gold" size="44" color="#1a1206" /></view>
         <view class="mod-info">
@@ -63,10 +71,12 @@
 
     <!-- 我的关注 -->
     <view class="mod mod-watch" hover-class="press" bindtap="goWatchlist">
-      <view class="mod-glow watch-glow"></view>
-      <view class="mod-orbit orbit-a watch-orbit"></view>
-      <view class="mod-orbit2 orbit-b watch-orbit2"></view>
-      <view class="mod-dot watch-dot"></view>
+      <view class="deco-stars">
+        <view class="star st1"></view>
+        <view class="star st2"></view>
+        <view class="star st3"></view>
+        <view class="star st4"></view>
+      </view>
       <view class="mod-row">
         <view class="mod-ic watch-ic-solid"><ui-icon name="star" size="44" color="#1a1206" /></view>
         <view class="mod-info">

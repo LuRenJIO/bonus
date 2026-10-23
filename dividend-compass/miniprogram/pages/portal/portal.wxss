@@ -38,75 +38,123 @@
 }
 .mod-soon { border-style: dashed; opacity: 0.6; }
 
-/* —— 卡片轨道光效装饰：呼吸光斑 + 双轨道弧(旋转) + 发光点（纯 CSS 动画，GPU 合成） —— */
-.mod-glow {
-  position: absolute;
-  right: -60rpx;
-  top: -70rpx;
-  width: 260rpx;
-  height: 260rpx;
-  border-radius: 50%;
-  pointer-events: none;
-  animation: glow-breath 3.6s ease-in-out infinite;
-}
-@keyframes glow-breath {
-  0%, 100% { opacity: 0.7; transform: scale(1); }
-  50% { opacity: 1; transform: scale(1.06); }
-}
-.stock-glow { background: radial-gradient(circle, rgba(76, 141, 255, 0.28), transparent 68%); }
-.gold-glow-bg { background: radial-gradient(circle, rgba(212, 169, 78, 0.3), transparent 68%); }
-.watch-glow { background: radial-gradient(circle, rgba(79, 191, 139, 0.26), transparent 68%); }
+/* —— 卡片具象装饰（纯 CSS 精绘） —— */
 
-/* 外轨道弧：270° 弧线，缓慢旋转（缺口旋转产生轨道运动感） */
-.mod-orbit {
+/* 拾息红利：标准 K 线（影线 + 圆角实体 + 涨跌分色 + 基准线 + 网格） */
+.deco-kline {
   position: absolute;
-  right: 16rpx;
-  top: 6rpx;
-  width: 150rpx;
-  height: 150rpx;
-  border-radius: 50%;
-  border: 2rpx solid transparent;
+  right: 14rpx;
+  bottom: 10rpx;
+  width: 190rpx;
+  height: 160rpx;
   pointer-events: none;
-  will-change: transform;
-  animation: orb-spin 26s linear infinite;
 }
-@keyframes orb-spin { to { transform: rotate(360deg); } }
-.stock-orbit { border-color: rgba(120, 175, 255, 0.4) rgba(120, 175, 255, 0.4) rgba(120, 175, 255, 0.08) transparent; }
-.gold-orbit { border-color: rgba(240, 208, 138, 0.42) rgba(240, 208, 138, 0.42) rgba(240, 208, 138, 0.08) transparent; }
-.watch-orbit { border-color: rgba(127, 216, 168, 0.38) rgba(127, 216, 168, 0.38) rgba(127, 216, 168, 0.08) transparent; }
+.kgrid {
+  position: absolute;
+  inset: 0;
+  background-image: linear-gradient(rgba(76, 141, 255, 0.08) 1rpx, transparent 1rpx);
+  background-size: 100% 32rpx;
+}
+.kbase {
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: 1rpx;
+  background: linear-gradient(90deg, transparent, rgba(120, 175, 255, 0.4), transparent);
+}
+.kline {
+  position: absolute;
+  bottom: 0;
+  width: 30rpx;
+  height: 100%;
+}
+.k1 { right: 6rpx; } .k2 { right: 52rpx; } .k3 { right: 98rpx; } .k4 { right: 144rpx; }
+.kw {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 2rpx;
+  background: rgba(190, 215, 255, 0.5);
+}
+.kbody {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  border-radius: 3rpx;
+}
+.kb.up {
+  background: linear-gradient(180deg, rgba(170, 205, 255, 0.95), rgba(76, 141, 255, 0.35));
+  box-shadow: 0 0 14rpx rgba(76, 141, 255, 0.3), inset 0 2rpx 2rpx rgba(255, 255, 255, 0.35);
+}
+.kb.dn { background: linear-gradient(180deg, rgba(100, 115, 135, 0.7), rgba(60, 72, 88, 0.4)); }
+.kb.hi { box-shadow: 0 0 18rpx rgba(120, 175, 255, 0.55), inset 0 2rpx 2rpx rgba(255, 255, 255, 0.45); }
+.k1 .kw { top: 20rpx; bottom: 0; }   .k1 .kb { bottom: 18rpx; height: 62rpx; }
+.k2 .kw { top: 0; bottom: 30rpx; }   .k2 .kb { bottom: 44rpx; height: 46rpx; }
+.k3 .kw { top: 8rpx; bottom: 0; }    .k3 .kb { bottom: 28rpx; height: 74rpx; }
+.k4 .kw { top: 0; bottom: 0; }       .k4 .kb { bottom: 14rpx; height: 96rpx; }
 
-/* 内轨道环：反向慢旋 */
-.mod-orbit2 {
+/* 拾金观察：金锭三叠（立体分色 + 顶面高光 + 底座投影 + 光点） */
+.deco-ingot {
   position: absolute;
-  right: 52rpx;
-  top: 40rpx;
-  width: 78rpx;
-  height: 78rpx;
-  border-radius: 50%;
-  border: 1.5rpx solid transparent;
+  right: 10rpx;
+  bottom: 10rpx;
+  width: 200rpx;
+  height: 160rpx;
   pointer-events: none;
-  will-change: transform;
-  animation: orb-spin-rev 38s linear infinite;
 }
-@keyframes orb-spin-rev { to { transform: rotate(-360deg); } }
-.stock-orbit2 { border-color: transparent transparent rgba(156, 193, 240, 0.4) rgba(156, 193, 240, 0.4); }
-.gold-orbit2 { border-color: transparent transparent rgba(245, 220, 166, 0.42) rgba(245, 220, 166, 0.42); }
-.watch-orbit2 { border-color: transparent transparent rgba(127, 216, 168, 0.4) rgba(127, 216, 168, 0.4); }
+.ishadow {
+  position: absolute;
+  right: 0;
+  bottom: -6rpx;
+  width: 190rpx;
+  height: 26rpx;
+  border-radius: 50%;
+  background: radial-gradient(ellipse, rgba(0, 0, 0, 0.5), transparent 70%);
+}
+.ingot {
+  position: absolute;
+  background: linear-gradient(115deg, #f8e7bd 0%, #e8c477 40%, #d4a94e 62%, #9a7420 100%);
+  clip-path: polygon(14% 0, 86% 0, 100% 100%, 0 100%);
+}
+.ingot .itop {
+  position: absolute;
+  top: 0; left: 14%; right: 14%;
+  height: 6rpx;
+  background: linear-gradient(90deg, rgba(255, 248, 225, 0.95), rgba(255, 236, 190, 0.6));
+  border-radius: 3rpx;
+}
+.ingot .iside {
+  position: absolute;
+  top: 0; bottom: 0;
+  left: 0;
+  width: 22%;
+  background: linear-gradient(90deg, rgba(255, 250, 230, 0.5), transparent);
+}
+.ig1 { right: 2rpx; bottom: 6rpx; width: 158rpx; height: 48rpx; }
+.ig2 { right: 34rpx; bottom: 56rpx; width: 118rpx; height: 42rpx; }
+.ig3 { right: 56rpx; bottom: 100rpx; width: 86rpx; height: 36rpx; }
+.ig3 .itop { left: 16%; right: 16%; }
+.ispark {
+  position: absolute;
+  width: 8rpx;
+  height: 8rpx;
+  border-radius: 50%;
+  background: #fff6dd;
+  box-shadow: 0 0 14rpx rgba(255, 246, 221, 1);
+}
+.ispark.sp1 { right: 12rpx; top: 14rpx; }
+.ispark.sp2 { right: 168rpx; bottom: 34rpx; opacity: 0.65; }
 
-/* 轨道上的发光点（呼吸） */
-.mod-dot {
+/* 我的关注：绿光星野 */
+.deco-stars { position: absolute; inset: 0; pointer-events: none; }
+.star {
   position: absolute;
-  right: 52rpx;
-  top: 66rpx;
-  width: 14rpx;
-  height: 14rpx;
   border-radius: 50%;
-  pointer-events: none;
-  animation: glow-breath 3.6s ease-in-out infinite;
+  background: #bdf0d3;
 }
-.stock-dot { background: #9fc1f0; box-shadow: 0 0 16rpx rgba(120, 175, 255, 0.95); }
-.gold-dot { background: var(--gold-hi); box-shadow: 0 0 16rpx rgba(240, 208, 138, 0.95); }
-.watch-dot { background: #7fd8a8; box-shadow: 0 0 16rpx rgba(127, 216, 168, 0.9); }
+.st1 { right: 24rpx; top: 22rpx; width: 10rpx; height: 10rpx; box-shadow: 0 0 14rpx rgba(127, 216, 168, 1); }
+.st2 { right: 92rpx; top: 52rpx; width: 7rpx; height: 7rpx; opacity: 0.7; box-shadow: 0 0 10rpx rgba(127, 216, 168, 0.8); }
+.st3 { right: 52rpx; bottom: 30rpx; width: 6rpx; height: 6rpx; opacity: 0.5; }
+.st4 { right: 150rpx; top: 40rpx; width: 5rpx; height: 5rpx; opacity: 0.4; }
 
 /* 我的关注：星标容器 */
 .watch-ic-solid {
