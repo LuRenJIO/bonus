@@ -223,7 +223,7 @@
     </view>
 
     <!-- 无预测数据 -->
-    <view class="card" wx:else>
+    <view class="card" wx:elif="{{!isEtf}}">
       <view class="card-title"><text>预期分红</text></view>
       <view class="no-div-tip">
         <block wx:if="{{d.prediction.notes.length}}">{{d.prediction.notes[0]}}</block>
