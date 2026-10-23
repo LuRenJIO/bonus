@@ -158,6 +158,7 @@ Page({
 
   drawGold(attempt) {
     const paint = (ctx, W, H) => {
+      try {
       const pts = this.goldPoints();
       if (!pts || pts.length < 2) return;
       const minute = this.data.goldMode === 'minute';
@@ -226,6 +227,9 @@ Page({
         ctx.fillStyle = this.data.chart.goldChg >= 0 ? '#f04b5a' : '#00b578';
         ctx.textAlign = 'right';
         ctx.fillText('区间 ' + (this.data.chart.goldChg >= 0 ? '+' : '') + this.data.chart.goldChg + '%', padL + plotW, padT - 6);
+      }
+      } catch (err) {
+        console.error('gold paint error:', err && err.message, err && err.stack);
       }
     };
     try {

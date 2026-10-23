@@ -21,32 +21,30 @@
   </view>
   <view wx:if="{{loading && !spot}}" class="loading-box">加载中…</view>
 
-  <!-- 金价走势：分时/近1年/近3年 可切换，支持滑动查看 -->
-  <view class="card" wx:if="{{goldMode === 'minute' ? minute : (chart && !chartFail)}}">
+  <!-- 金价走势：分时/近1年/近3年 可切换，支持滑动查看（canvas 常驻不卸载，杜绝挂载竞态） -->
+  <view class="card" wx:if="{{goldMode === 'minute' ? !!minute : !!chart}}">
     <view class="card-title">
       <text>金价走势</text>
-      <view class="pred-tabs">
-        <view class="pred-tab {{goldMode === 'minute' ? 'active' : ''}}" data-mode="minute" bindtap="onGoldModeTap">分时</view>
-        <view class="pred-tab {{goldMode === '1y' ? 'active' : ''}}" data-mode="1y" bindtap="onGoldModeTap">近1年</view>
-        <view class="pred-tab {{goldMode === '3y' ? 'active' : ''}}" data-mode="3y" bindtap="onGoldModeTap">近3年</view>
+      <view class="g-tabs">
+        <view class="g-tab {{goldMode === 'minute' ? 'on' : ''}}" data-mode="minute" bindtap="onGoldModeTap">分时</view>
+        <view class="g-tab {{goldMode === '1y' ? 'on' : ''}}" data-mode="1y" bindtap="onGoldModeTap">近1年</view>
+        <view class="g-tab {{goldMode === '3y' ? 'on' : ''}}" data-mode="3y" bindtap="onGoldModeTap">近3年</view>
       </view>
     </view>
+    <view class="price-press-bar" wx:if="{{press}}">
+      <text class="pp-time num">{{press.time}}</text>
+      <text class="pp-price num">{{press.price}}</text>
+      <text class="pp-unit">元/克</text>
+    </view>
+    <view class="cv-wrap" hidden="{{chartLoading}}">
+      <canvas type="2d" id="goldCanvas" class="gd-cv"
+              catchtouchstart="onGoldTouch" catchtouchmove="onGoldTouch"
+              catchtouchend="onGoldTouchEnd" catchtouchcancel="onGoldTouchEnd"></canvas>
+    </view>
     <view wx:if="{{chartLoading}}" class="loading-box" style="padding: 20rpx 0 30rpx;">加载中…</view>
-    <block wx:else>
-      <view class="price-press-bar" wx:if="{{press}}">
-        <text class="pp-time num">{{press.time}}</text>
-        <text class="pp-price num">{{press.price}}</text>
-        <text class="pp-unit">元/克</text>
-      </view>
-      <view class="cv-wrap">
-        <canvas type="2d" id="goldCanvas" class="gd-cv"
-                catchtouchstart="onGoldTouch" catchtouchmove="onGoldTouch"
-                catchtouchend="onGoldTouchEnd" catchtouchcancel="onGoldTouchEnd"></canvas>
-      </view>
-      <view class="price-note" wx:if="{{press}}">松开手指返回实时视图</view>
-      <view class="price-note" wx:elif="{{goldMode === 'minute'}}">按住曲线滑动查看分钟数据 · {{minute.date}}（含夜盘）</view>
-      <view class="price-note" wx:else>按住曲线滑动查看历史点位 · {{goldMode === '3y' ? '近3年' : '近1年'}} · {{chart.source === 'futures' ? '沪金期货主力' : '上海金现货'}}</view>
-    </block>
+    <view class="price-note" wx:if="{{press}}">松开手指返回实时视图</view>
+    <view class="price-note" wx:elif="{{goldMode === 'minute' && minute}}">按住曲线滑动查看分钟数据 · {{minute.date}}（含夜盘）</view>
+    <view class="price-note" wx:elif="{{goldMode !== 'minute' && chart}}">按住曲线滑动查看历史点位 · {{goldMode === '3y' ? '近3年' : '近1年'}} · {{chart.source === 'futures' ? '沪金期货主力' : '上海金现货'}}</view>
   </view>
 
   <!-- 股金月度对比 -->
