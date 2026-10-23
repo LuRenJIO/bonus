@@ -37,10 +37,18 @@ function fail(msg) { return { success: false, error: msg }; }
 async function handleList() {
   try {
     const res = await db.collection(COL)
-      .orderBy('addedAt', 'desc')
       .limit(100)
       .get();
-    return ok(res.data || []);
+    // 用户自定义排序：order 升序优先；无 order 的旧数据按添加时间倒序兜底
+    const rows = (res.data || []).slice().sort((a, b) => {
+      const oa = typeof a.order === 'number' ? a.order : null;
+      const ob = typeof b.order === 'number' ? b.order : null;
+      if (oa !== null && ob !== null) return oa - ob;
+      if (oa !== null) return -1;
+      if (ob !== null) return 1;
+      return (new Date(b.addedAt).getTime() || 0) - (new Date(a.addedAt).getTime() || 0);
+    });
+    return ok(rows);
   } catch (e) {
     // 集合不存在
     if (String(e.errCode) === '-502005' || /not exist|不存在/.test(e.errMsg || '')) {
@@ -64,6 +72,7 @@ async function handleAdd(event) {
     code,
     name: event.name || '',
     market: event.market || (/^(6|9)/.test(code) ? 'SH' : 'SZ'),
+    order: -Date.now(),   // 新加自选排最前（用户可通过 reorder 自定义）
     addedAt: db.serverDate(),
   };
   const res = await db.collection(COL).add({ data: item });
@@ -75,6 +84,17 @@ async function handleRemove(event) {
   if (!code) return fail('缺少股票代码');
   await db.collection(COL).where({ code }).remove();
   return ok({ removed: true });
+}
+
+/** 用户自定义排序：按传入的 code 顺序写回 order 序号（0,1,2...） */
+async function handleReorder(event) {
+  const codes = Array.isArray(event.codes) ? event.codes.map((c) => String(c).trim()).filter(Boolean) : [];
+  if (!codes.length) return fail('缺少排序数据');
+  if (codes.length > 100) return fail('排序数量超出限制');
+  await Promise.all(codes.map((code, i) =>
+    db.collection(COL).where({ code }).update({ data: { order: i } })
+  ));
+  return ok({ reordered: codes.length });
 }
 
 /* ---------------- 持仓（收息记账） ---------------- */
@@ -229,6 +249,7 @@ exports.main = async (event = {}) => {
       case 'list': return await handleList(event);
       case 'add': return await handleAdd(event);
       case 'remove': return await handleRemove(event);
+      case 'reorder': return await handleReorder(event);
       case 'holdingList': return await handleHoldingList(event);
       case 'holdingAdd': return await handleHoldingAdd(event);
       case 'holdingRemove': return await handleHoldingRemove(event);

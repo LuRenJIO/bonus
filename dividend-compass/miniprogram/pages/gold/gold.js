@@ -249,12 +249,11 @@ Page({
       // x 轴标签
       ctx.fillStyle = '#59626d';
       if (minute) {
-        // 完整交易日刻度：前日夜盘开盘 / 零点 / 日盘开盘 / 午盘开始 / 收盘
+        // 完整交易日刻度：前日夜盘开盘 / 零点 / 日盘开盘 / 收盘（13:30 与 15:00 距离近，略去避免重叠）
         ctx.textAlign = 'left'; ctx.fillText('21:00', padL, H - 5);
         ctx.fillText('00:00', padL + (plotW * 180) / GOLD_TOTAL_SLOTS, H - 5);
         ctx.fillText('09:00', padL + (plotW * 331) / GOLD_TOTAL_SLOTS, H - 5);
-        ctx.fillText('13:30', padL + (plotW * 468) / GOLD_TOTAL_SLOTS, H - 5);
-        ctx.textAlign = 'right'; ctx.fillText('15:00', padL + (plotW * 568) / GOLD_TOTAL_SLOTS, H - 5);
+        ctx.textAlign = 'right'; ctx.fillText('15:00', padL + plotW, H - 5);
       } else {
         for (let g = 0; g < 5; g++) {
           const idx = Math.round((n - 1) * g / 4);
@@ -313,21 +312,46 @@ Page({
   /* ---------- ETF 与配置估算 ---------- */
   async loadEtf() {
     try {
-      const list = await util.callService('quotes', {
-        list: [
-          { code: '518880', market: 'SH' },
-          { code: '159934', market: 'SZ' },
-          { code: '518800', market: 'SH' },
-        ],
-      });
+      const [list, favList] = await Promise.all([
+        util.callService('quotes', {
+          list: [
+            { code: '518880', market: 'SH' },
+            { code: '159934', market: 'SZ' },
+            { code: '518800', market: 'SH' },
+          ],
+        }),
+        util.callFavorites('list').catch(() => []),
+      ]);
+      const favSet = {};
+      (Array.isArray(favList) ? favList : []).forEach((f) => { favSet[f.code] = true; });
       const etfs = (list || []).map((x) => ({
         code: x.code,
         name: ETF_NAMES[x.code] || x.name || x.code,   // 行情接口无名称 → 静态映射兜底
         price: x.price,
         changePercent: x.changePercent,
+        isFav: !!favSet[x.code],
       }));
       this.setData({ etfs: etfs.length ? etfs : null });
     } catch (e) { /* 静默 */ }
+  },
+
+  /* ETF 关注/取关（星标 toggle，写入自选） */
+  async toggleFav(e) {
+    const { code, name, market } = e.currentTarget.dataset;
+    const item = (this.data.etfs || []).find((x) => x.code === code);
+    if (!item) return;
+    try {
+      if (item.isFav) {
+        await util.callFavorites('remove', { code });
+        wx.showToast({ title: '已取消关注', icon: 'none' });
+      } else {
+        await util.callFavorites('add', { code, name, market });
+        wx.showToast({ title: '已加入我的关注', icon: 'none' });
+      }
+      this.setData({ ['etfs[' + this.data.etfs.indexOf(item) + '].isFav']: !item.isFav });
+    } catch (err) {
+      wx.showToast({ title: err.message || '操作失败', icon: 'none' });
+    }
   },
 
   onAmountInput(e) { this.setData({ amount: e.detail.value }); },

@@ -18,6 +18,28 @@
 .mt-ic { display: flex; align-items: center; }
 .mt-name { font-size: 23rpx; font-weight: 600; color: #7fd8a8; flex: 1; }
 .mt-cur { font-size: 19rpx; color: var(--text-dim); }
+.manage-btn { color: #7fd8a8; font-weight: 600; padding: 6rpx 12rpx; }
+
+/* 管理模式排序按钮 */
+.wl-moves {
+  display: flex;
+  flex-direction: column;
+  gap: 6rpx;
+  margin-right: 16rpx;
+  flex-shrink: 0;
+}
+.mv-btn {
+  width: 44rpx;
+  height: 40rpx;
+  line-height: 38rpx;
+  text-align: center;
+  font-size: 22rpx;
+  color: var(--text-sub);
+  background: var(--card-hover);
+  border: 1rpx solid var(--border);
+  border-radius: 6rpx;
+}
+.mv-btn.dis { opacity: 0.3; }
 
 /* 骨架 */
 .wl-skeleton { padding: 10rpx 24rpx; }

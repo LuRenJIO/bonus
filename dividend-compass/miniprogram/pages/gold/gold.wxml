@@ -72,15 +72,17 @@
 
   <!-- 场内黄金ETF + 配置估算 -->
   <view class="card" wx:if="{{etfs}}">
-    <view class="card-title"><text>场内黄金ETF</text><text class="sub">跟踪金价 · 免印花税 · 100元起</text></view>
+    <view class="card-title"><text>场内黄金ETF</text><text class="sub">点星标加入我的关注</text></view>
     <view class="ge-row" wx:for="{{etfs}}" wx:key="code"
-          data-code="{{item.code}}" data-name="{{item.name}}" bindtap="goStock">
+          data-code="{{item.code}}" data-name="{{item.name}}" bindtap="goStock" hover-class="press">
       <view class="ge-left">
         <text class="ge-name">{{item.name}}</text>
         <text class="ge-code num">{{item.code}}</text>
       </view>
       <text class="ge-price num">{{item.price === null ? '--' : item.price}}</text>
       <text class="ge-chg num {{item.changePercent >= 0 ? 'up' : 'down'}}">{{item.changePercent === null ? '--' : (item.changePercent > 0 ? '+' : '') + item.changePercent + '%'}}</text>
+      <view class="ge-fav {{item.isFav ? 'on' : ''}}" catchtap="toggleFav"
+            data-code="{{item.code}}" data-name="{{item.name}}" data-market="SH">{{item.isFav ? '★' : '☆'}}</view>
     </view>
     <!-- 配置估算 -->
     <view class="gc-calc">

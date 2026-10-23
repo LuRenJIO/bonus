@@ -1,11 +1,11 @@
-<!--watchlist.wxml 我的关注：各模块自选集中呈现-->
+<!--watchlist.wxml 我的关注：各模块自选集中呈现 + 管理模式（排序/删除）-->
 <view class="page">
 
   <!-- 模块归属条 -->
   <view class="module-tag watch-tag">
     <view class="mt-ic"><ui-icon name="star" size="26" /></view>
     <text class="mt-name">我的关注</text>
-    <text class="mt-cur">工作台</text>
+    <text class="mt-cur manage-btn" bindtap="toggleManage">{{manageMode ? '完成' : '管理'}}</text>
   </view>
 
   <view wx:if="{{loading}}" class="wl-skeleton">
@@ -35,10 +35,14 @@
 
     <!-- 股票自选 -->
     <view class="card">
-      <view class="card-title"><text>股票自选</text><text class="sub">{{stocks.length ? stocks.length + ' 只' : ''}}</text></view>
+      <view class="card-title"><text>股票自选</text><text class="sub">{{manageMode ? '上下移动调整顺序' : (stocks.length ? stocks.length + ' 只' : '')}}</text></view>
       <view wx:if="{{!stocks.length}}" class="empty-box">暂无自选股票 · 在详情页可添加</view>
       <view class="wl-row" wx:for="{{stocks}}" wx:key="code"
-            data-code="{{item.code}}" data-name="{{item.name}}" bindtap="goStock" hover-class="press">
+            data-code="{{item.code}}" data-name="{{item.name}}" bindtap="goStock" hover-class="{{manageMode ? '' : 'press'}}">
+        <view class="wl-moves" wx:if="{{manageMode}}">
+          <view class="mv-btn {{idx === 0 ? 'dis' : ''}}" data-group="stocks" data-idx="{{index}}" data-dir="up" catchtap="moveRow">↑</view>
+          <view class="mv-btn {{idx === stocks.length - 1 ? 'dis' : ''}}" data-group="stocks" data-idx="{{index}}" data-dir="down" catchtap="moveRow">↓</view>
+        </view>
         <view class="wl-left">
           <view class="wl-name">{{item.name}}</view>
           <view class="wl-code num">{{item.market}} {{item.code}}</view>
@@ -59,7 +63,11 @@
     <view class="card" wx:if="{{etfs.length}}">
       <view class="card-title"><text>ETF / 基金自选</text><text class="sub">{{etfs.length}} 只</text></view>
       <view class="wl-row" wx:for="{{etfs}}" wx:key="code"
-            data-code="{{item.code}}" data-name="{{item.name}}" bindtap="goStock" hover-class="press">
+            data-code="{{item.code}}" data-name="{{item.name}}" bindtap="goStock" hover-class="{{manageMode ? '' : 'press'}}">
+        <view class="wl-moves" wx:if="{{manageMode}}">
+          <view class="mv-btn {{idx === 0 ? 'dis' : ''}}" data-group="etfs" data-idx="{{index}}" data-dir="up" catchtap="moveRow">↑</view>
+          <view class="mv-btn {{idx === etfs.length - 1 ? 'dis' : ''}}" data-group="etfs" data-idx="{{index}}" data-dir="down" catchtap="moveRow">↓</view>
+        </view>
         <view class="wl-left">
           <view class="wl-name">{{item.name}}</view>
           <view class="wl-code num">{{item.market}} {{item.code}}</view>
@@ -77,7 +85,7 @@
     </view>
 
     <view class="footer-tip">
-      <view>这里集中呈现你在各模块添加的自选内容 · 长按行情数据以最新一次刷新为准</view>
+      <view>{{manageMode ? '管理中：↑↓ 调整顺序（自动保存），✕ 移除关注' : '点「管理」可自定义排序与移除 · 数据以最新刷新为准'}}</view>
     </view>
   </block>
 
