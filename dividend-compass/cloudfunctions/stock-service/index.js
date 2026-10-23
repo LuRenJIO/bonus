@@ -11,6 +11,7 @@
  */
 
 const ds = require('./lib/dataSource');
+const marketOf = ds.marketOf;
 const div = require('./lib/dividend');
 const pred = require('./lib/prediction');
 const signal = require('./lib/signal');
@@ -68,7 +69,7 @@ async function handleQuotes(event) {
 async function handleOverview(event) {
   const code = String(event.code || '').trim();
   if (!/^\d{6}$/.test(code)) return fail('股票代码格式错误');
-  const market = event.market || (/^(6|9)/.test(code) ? 'SH' : 'SZ');
+  const market = event.market || marketOf(code);
 
   const ck = 'ov:' + code;
   // 前端显式刷新（refresh=true）时绕过缓存，保证行情为最新
@@ -269,7 +270,7 @@ async function handleCheckAlerts(event) {
   if (cached) return ok(cached);
 
   const [quotes, divLists] = await Promise.all([
-    ds.quoteBatch(list.map((r) => ({ code: r.code, market: r.market || (/^(6|9)/.test(r.code) ? 'SH' : 'SZ') }))).catch(() => []),
+    ds.quoteBatch(list.map((r) => ({ code: r.code, market: r.market || marketOf(r.code) }))).catch(() => []),
     Promise.all(list.map((r) => ds.getDividendHistory(r.code).catch(() => []))),
   ]);
   const qMap = {};
@@ -318,7 +319,7 @@ async function getFinanceCached(code, type) {
 async function handleIndexChart(event) {
   const code = String(event.code || '').trim();
   if (!/^\d{6}$/.test(code)) return fail('指数代码格式错误');
-  const market = event.market || (/^(6|9)/.test(code) ? 'SH' : 'SZ');
+  const market = event.market || marketOf(code);
 
   if (event.mode === 'history') {
     const range = event.range === '5y' ? '5y' : '1y';
@@ -538,7 +539,7 @@ function dividendName(rawList) {
 async function handleReinvest(event) {
   const code = String(event.code || '').trim();
   if (!/^\d{6}$/.test(code)) return fail('股票代码格式错误');
-  const market = event.market || (/^(6|9)/.test(code) ? 'SH' : 'SZ');
+  const market = event.market || marketOf(code);
   let years = parseInt(event.years, 10);
   if (!isNum(years)) years = 5;
   years = Math.max(2, Math.min(years, 5));
@@ -775,7 +776,7 @@ async function handlePortfolio(event) {
   const year = new Date().getFullYear();
   const list = holdings.map((h) => ({
     code: String(h.code),
-    market: h.market || (/^(6|9)/.test(h.code) ? 'SH' : 'SZ'),
+    market: h.market || marketOf(h.code),
     shares: Number(h.shares),
     cost: isNum(Number(h.cost)) && Number(h.cost) > 0 ? Number(h.cost) : null,
   }));

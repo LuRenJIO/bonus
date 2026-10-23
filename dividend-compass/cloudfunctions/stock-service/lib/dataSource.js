@@ -689,6 +689,7 @@ module.exports = {
   getGoldDaily: getGoldDaily,           // 双源（东财现货→新浪期货），失败由调用方降级
   getGoldMinute: withRetry(getGoldMinute, 1),
   buildSecid,
+  marketOf,
 };
 
 /* ---------------- 12. 贵金属现货（新浪，GBK 响应仅解析 ASCII 数字字段） ---------------- */
