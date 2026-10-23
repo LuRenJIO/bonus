@@ -660,44 +660,62 @@ async function handleGoldBrief() {
   return ok(spot);
 }
 
-/** 金价走势与股金对比（12小时缓存）：近1年日K + 分位 + 沪深300涨跌/同向月计数 */
-async function handleGoldChart() {
-  const cached = cacheGet('gchart', 12 * 3600 * 1000);
+/** 黄金当日分时（5分钟缓存）：沪金期货主力最新交易日分钟线 */
+async function handleGoldMinute() {
+  const cached = cacheGet('gmin', 5 * 60 * 1000);
+  if (cached) return ok(cached);
+  const m = await ds.getGoldMinute().catch(() => null);
+  if (!m) return fail('黄金分时数据获取失败');
+  cacheSet('gmin', m);
+  return ok(m);
+}
+
+/** 金价走势与股金对比（12小时缓存）：日K + 分位 + 沪深300涨跌/同向月计数/月度明细 */
+async function handleGoldChart(event) {
+  const range = event.range === '3y' ? '3y' : '1y';
+  const n = range === '3y' ? 780 : 260;
+  const ck = 'gchart:' + range;
+  const cached = cacheGet(ck, 12 * 3600 * 1000);
   if (cached) return ok(cached);
   const [goldRes, hs300m] = await Promise.all([
-    ds.getGoldDaily(260).catch(() => null),
-    ds.getIndexMonthlyCloses(14).catch(() => null),
+    ds.getGoldDaily(n).catch(() => null),
+    ds.getIndexMonthlyCloses(range === '3y' ? 40 : 14).catch(() => null),
   ]);
   if (!goldRes || !goldRes.rows || goldRes.rows.length < 60) return fail('金价历史数据获取失败');
-  // 强制截取近1年（约260个交易日）：东财 118 市场 lmt 参数不生效时返回全量历史
-  const gold = goldRes.rows.slice(-260);
+  // 强制截取目标窗口（约250交易日/年）：东财 118 市场 lmt 参数不生效时返回全量历史
+  const gold = goldRes.rows.slice(-n);
   const closes = gold.map((g) => g.close);
   const last = closes[closes.length - 1];
   const percentile = Math.round((closes.filter((c) => c <= last).length / closes.length) * 100);
   const goldChg = +((last / closes[0] - 1) * 100).toFixed(1);
-  let hs300Chg = null, sameDirMonths = null, totalMonths = null;
+  let hs300Chg = null, sameDirMonths = null, totalMonths = null, monthly = null;
   if (hs300m && hs300m.length >= 13) {
-    const w = hs300m.slice(-13);   // 13个月末 → 12段
+    const w = hs300m.slice(-(range === '3y' ? 37 : 13));   // 月末点 → 段数 = 点数-1
     hs300Chg = +((w[w.length - 1].close / w[0].close - 1) * 100).toFixed(1);
     // 金价按月取末值，与沪深300逐月比方向（沪深300月K字段为 ym）
     const gMonth = {};
     gold.forEach((g) => { gMonth[g.date.slice(0, 7)] = g.close; });
     let same = 0, cnt = 0;
+    const rows = [];
     for (let i = 1; i < w.length; i++) {
       const gm = gMonth[w[i].ym];
       const gmPrev = gMonth[w[i - 1].ym];
-      if (!isFinite(gm) || !isFinite(gmPrev)) continue;
+      if (!isFinite(gm) || !isFinite(gmPrev) || !gmPrev) continue;
+      const gPct = +((gm / gmPrev - 1) * 100).toFixed(1);
+      const sPct = +((w[i].close / w[i - 1].close - 1) * 100).toFixed(1);
       cnt++;
       if ((gm >= gmPrev) === (w[i].close >= w[i - 1].close)) same++;
+      rows.push({ ym: w[i].ym, gold: gPct, hs300: sPct });
     }
-    if (cnt >= 6) { sameDirMonths = same; totalMonths = cnt; }
+    if (cnt >= 6) { sameDirMonths = same; totalMonths = cnt; monthly = rows; }
   }
   const result = {
     points: gold.map((g) => ({ d: g.date, price: g.close })),
     source: goldRes.source,
-    percentile, goldChg, hs300Chg, sameDirMonths, totalMonths,
+    range,
+    percentile, goldChg, hs300Chg, sameDirMonths, totalMonths, monthly,
   };
-  cacheSet('gchart', result);
+  cacheSet(ck, result);
   return ok(result);
 }
 
@@ -923,7 +941,8 @@ exports.main = async (event = {}) => {
       case 'annualReport': return await handleAnnualReport(event);
       case 'reinvest': return await handleReinvest(event);
       case 'goldBrief': return await handleGoldBrief();
-      case 'goldChart': return await handleGoldChart();
+      case 'goldChart': return await handleGoldChart(event);
+      case 'goldMinute': return await handleGoldMinute();
       default: return fail('未知 action: ' + event.action);
     }
   } catch (e) {

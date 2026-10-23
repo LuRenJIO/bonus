@@ -1,14 +1,27 @@
 /* 黄金观察页 */
 .page { min-height: 100vh; padding-bottom: 60rpx; }
 
-/* 今日金价 */
-.gs-grid { display: flex; }
-.gs-item { flex: 1; display: flex; flex-direction: column; align-items: center; }
-.gs-name { font-size: 20rpx; color: var(--text-dim); }
-.gs-price { font-size: 36rpx; font-weight: 700; margin-top: 8rpx; }
-.gs-sub { font-size: 20rpx; color: var(--text-dim); margin-top: 6rpx; }
+/* 今日金价（行式布局） */
+.gs-list { display: flex; flex-direction: column; }
+.gs-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14rpx 0;
+  border-bottom: 1rpx solid var(--border);
+}
+.gs-row:last-of-type { border-bottom: none; }
+.gs-left { display: flex; flex-direction: column; }
+.gs-name { font-size: 24rpx; }
+.gs-range { font-size: 19rpx; color: var(--text-dim); margin-top: 4rpx; }
+.gs-right { display: flex; align-items: baseline; gap: 12rpx; }
+.gs-price { font-size: 30rpx; font-weight: 700; }
+.gs-unit { font-size: 19rpx; color: var(--text-dim); }
+.gs-chg { font-size: 24rpx; font-weight: 600; min-width: 90rpx; text-align: right; }
+.gs-chg.up { color: #f04b5a; }
+.gs-chg.dn { color: #00b578; }
 .gs-premium {
-  margin-top: 16rpx;
+  margin-top: 14rpx;
   padding: 10rpx 16rpx;
   background: var(--bg);
   border-radius: 10rpx;
@@ -18,30 +31,47 @@
 }
 .gs-premium-note { color: var(--text-dim); font-weight: 400; }
 
-/* 金价走势 */
-.gd-cv { width: 100%; height: 320rpx; }
-.gd-pos { display: flex; align-items: baseline; gap: 14rpx; margin-top: 10rpx; }
-.gd-pos-val { font-size: 40rpx; font-weight: 700; color: var(--gold); }
-.gd-pos-note { font-size: 20rpx; color: var(--text-dim); line-height: 1.6; flex: 1; }
+/* 走势卡（tabs 复用 pred-tabs；滑动条复用 price-press-bar 风格） */
+.gd-cv { width: 100%; height: 340rpx; }
+.price-press-bar {
+  display: flex;
+  align-items: baseline;
+  gap: 20rpx;
+  padding: 4rpx 4rpx 8rpx;
+  min-height: 48rpx;
+}
+.pp-time { font-size: 24rpx; color: var(--text-sub); }
+.pp-price { font-size: 30rpx; font-weight: 700; color: var(--gold); }
+.pp-unit { font-size: 19rpx; color: var(--text-dim); }
 
-/* 股金跷跷板 */
-.vs-row { display: flex; align-items: center; gap: 14rpx; padding: 10rpx 0; }
-.vs-k { width: 130rpx; font-size: 22rpx; color: var(--text-sub); flex-shrink: 0; }
-.vs-track { flex: 1; height: 16rpx; background: var(--bg); border-radius: 999rpx; overflow: hidden; }
-.vs-fill { height: 100%; border-radius: 999rpx; }
-.vs-fill.up { background: #e8b95f; }
-.vs-fill.dn { background: #00b578; }
-.vs-v { width: 130rpx; text-align: right; font-size: 23rpx; font-weight: 600; flex-shrink: 0; }
-.vs-v.up { color: #f04b5a; }
-.vs-v.dn { color: #00b578; }
+/* 股金月度对比表 */
+.vm-head {
+  display: flex;
+  padding: 4rpx 0 10rpx;
+  border-bottom: 1rpx solid var(--border);
+}
+.vm-h { font-size: 20rpx; color: var(--text-dim); }
+.vm-h:nth-child(1) { width: 160rpx; }
+.vm-h:nth-child(2), .vm-h:nth-child(3) { flex: 1; text-align: right; }
+.vm-row {
+  display: flex;
+  align-items: center;
+  padding: 10rpx 0;
+  border-bottom: 1rpx solid var(--border);
+}
+.vm-row:last-of-type { border-bottom: none; }
+.vm-ym { width: 160rpx; font-size: 22rpx; color: var(--text-sub); }
+.vm-val { flex: 1; text-align: right; font-size: 23rpx; font-weight: 600; }
+.vm-val.up { color: #f04b5a; }
+.vm-val.dn { color: #00b578; }
 .vs-note {
-  margin-top: 12rpx;
+  margin-top: 14rpx;
   padding: 14rpx 16rpx;
   background: var(--bg);
   border-radius: 10rpx;
   font-size: 21rpx;
   color: var(--text-sub);
-  line-height: 1.6;
+  line-height: 1.7;
 }
 
 /* 黄金ETF */
@@ -51,7 +81,6 @@
   padding: 16rpx 0;
   border-bottom: 1rpx solid var(--border);
 }
-.ge-row:last-of-type { border-bottom: none; }
 .ge-left { flex: 1; display: flex; flex-direction: column; }
 .ge-name { font-size: 26rpx; }
 .ge-code { font-size: 20rpx; color: var(--text-dim); margin-top: 4rpx; }
@@ -60,9 +89,8 @@
 .ge-chg.up { color: #f04b5a; }
 .ge-chg.down { color: #00b578; }
 
-/* 配置参考 */
-.gc-edu-row { font-size: 22rpx; color: var(--text-sub); line-height: 1.8; }
-.gc-calc { margin-top: 18rpx; padding-top: 16rpx; border-top: 1rpx solid var(--border); }
+/* 配置估算（并入 ETF 卡） */
+.gc-calc { margin-top: 14rpx; padding-top: 14rpx; border-top: 1rpx solid var(--border); }
 .gc-calc-title { font-size: 23rpx; font-weight: 600; margin-bottom: 12rpx; }
 .gc-calc-in { display: flex; gap: 14rpx; }
 .gc-in {
@@ -99,6 +127,13 @@
 .gc-amt { flex: 1; text-align: right; margin-right: 20rpx; }
 .gc-shares { width: 260rpx; text-align: right; color: var(--text-dim); font-size: 21rpx; }
 .gc-note { font-size: 19rpx; color: var(--text-dim); margin-top: 10rpx; line-height: 1.6; }
+
+.price-note {
+  font-size: 20rpx;
+  color: var(--text-dim);
+  margin-top: 10rpx;
+  line-height: 1.6;
+}
 
 .footer-tip {
   padding: 10rpx 40rpx 40rpx;

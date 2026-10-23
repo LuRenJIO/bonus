@@ -676,7 +676,8 @@ module.exports = {
   getMarketDividendEvents: withRetry(getMarketDividendEvents, 1),
   getDividendHistory: withRetry(getDividendHistory, 2),
   getGoldSpot: withRetry(getGoldSpot, 1),
-  getGoldDaily: getGoldDaily,           // 单源东财，失败由调用方降级
+  getGoldDaily: getGoldDaily,           // 双源（东财现货→新浪期货），失败由调用方降级
+  getGoldMinute: withRetry(getGoldMinute, 1),
   buildSecid,
 };
 
@@ -725,6 +726,20 @@ async function getGoldSpot() {
     if (xauCnyPerG > 0) out.premium = +((out.shanghai.price / xauCnyPerG - 1) * 100).toFixed(2);
   }
   return (out.shanghai || out.xau) ? out : null;
+}
+
+/** 黄金当日分时（新浪期货 AU0 1分钟K，取最新交易日的分钟点 [{t:'HH:MM', price}]） */
+async function getGoldMinute() {
+  const url = 'https://stock2.finance.sina.com.cn/futures/api/jsonp.php/var%20t=/InnerFuturesNewService.getFewMinLine?symbol=AU0&type=1';
+  const text = await httpGet(url, { headers: { Referer: 'https://finance.sina.com.cn/' }, timeout: 8000 });
+  const m = /\((\[[\s\S]*\])\)/.exec(text);
+  const arr = m ? JSON.parse(m[1]) : [];
+  if (!arr.length) return null;
+  const lastDate = arr[arr.length - 1].d.slice(0, 10);
+  const points = arr.filter((r) => r.d.slice(0, 10) === lastDate)
+    .map((r) => ({ t: r.d.slice(11, 16), price: parseFloat(r.c) }))
+    .filter((x) => /^\d{2}:\d{2}$/.test(x.t) && isFinite(x.price) && x.price > 0);
+  return points.length >= 10 ? { date: lastDate, points } : null;
 }
 
 /**
