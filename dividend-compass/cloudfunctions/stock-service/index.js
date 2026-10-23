@@ -707,7 +707,7 @@ async function handleGoldChart(event) {
       if ((gm >= gmPrev) === (w[i].close >= w[i - 1].close)) same++;
       rows.push({ ym: w[i].ym, gold: gPct, hs300: sPct });
     }
-    if (cnt >= 6) { sameDirMonths = same; totalMonths = cnt; monthly = rows; }
+    if (cnt >= 6) { sameDirMonths = same; totalMonths = cnt; monthly = rows.reverse(); }   // 由近到远
   }
   const result = {
     points: gold.map((g) => ({ d: g.date, price: g.close })),

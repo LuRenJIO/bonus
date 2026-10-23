@@ -30,7 +30,7 @@ Page({
 
   onLoad() {
     this.loadSpot();
-    this.loadChart();
+    this.loadMinute();   // 默认分时模式
     this.loadEtf();
     this._timer = setInterval(() => this.loadSpot(), 30000);   // 30秒轮询实时金价
   },
