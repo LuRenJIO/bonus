@@ -5,7 +5,7 @@
 
   <view wx:elif="{{error}}" class="empty-box">
     <view>{{error}}</view>
-    <view class="err-detail">请确认已部署 favorites 云函数（最新版）</view>
+    <view class="err-detail">云端数据同步暂不可用，下拉页面可重试</view>
     <view class="retry-btn" bindtap="onRetry">重试</view>
   </view>
 

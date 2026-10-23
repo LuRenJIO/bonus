@@ -4,8 +4,8 @@
   <!-- 模块归属条 -->
   <view class="module-tag">
     <view class="mt-ic"><ui-icon name="chart" size="26" /></view>
-    <text class="mt-name">低波红利策略</text>
-    <text class="mt-cur">当前模块</text>
+    <text class="mt-name">拾息红利</text>
+    <text class="mt-cur">工作台</text>
   </view>
 
   <!-- 搜索框 -->
@@ -60,14 +60,6 @@
         <text class="brief-label">{{item.label}}</text>
         <text class="brief-val num {{item.cls}}">{{item.val}}</text>
       </view>
-    </view>
-
-    <!-- 今日金价入口 -->
-    <view class="gold-entry" wx:if="{{gold}}" bindtap="goGold">
-      <text class="ge-label">今日金价</text>
-      <text class="ge-val num">上海金 {{gold.price}} 元/克</text>
-      <text class="ge-chg num {{gold.chgPct >= 0 ? 'up' : 'down'}}" wx:if="{{gold.chgPct !== null}}">{{gold.chgPct >= 0 ? '+' : ''}}{{gold.chgPct}}%</text>
-      <text class="ge-arrow">›</text>
     </view>
 
     <!-- 免责声明 -->
@@ -143,7 +135,7 @@
       <view wx:elif="{{favError}}" class="empty-box">
         <view>云端自选暂不可用</view>
         <view class="err-detail">{{favError}}</view>
-        <view class="err-tip">请确认已部署 favorites 云函数并开通云开发</view>
+        <view class="err-tip">下拉页面可重试 · 也可先浏览其他功能</view>
       </view>
 
       <view wx:elif="{{!favList.length}}" class="empty-box">

@@ -6,8 +6,8 @@ Component({
   data: {
     open: false,
     modules: [
-      { key: 'strategy', name: '低波红利策略', desc: '行情 · 筛选 · 日历 · 记账', url: '/pages/index/index', icon: 'chart' },
-      { key: 'gold', name: '黄金观察', desc: '金价 · 走势 · ETF 配置', url: '/pages/gold/gold', icon: 'gold' },
+      { key: 'strategy', name: '拾息红利', desc: '行情 · 筛选 · 日历 · 记账', url: '/pages/index/index', icon: 'chart' },
+      { key: 'gold', name: '拾金观察', desc: '金价 · 走势 · ETF 配置', url: '/pages/gold/gold', icon: 'gold' },
     ],
   },
   methods: {

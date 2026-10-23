@@ -4,8 +4,8 @@
   <!-- 模块归属条 -->
   <view class="module-tag gold-tag">
     <view class="mt-ic"><ui-icon name="gold" size="26" /></view>
-    <text class="mt-name gold-name">黄金观察</text>
-    <text class="mt-cur">当前模块</text>
+    <text class="mt-name gold-name">拾金观察</text>
+    <text class="mt-cur">工作台</text>
   </view>
 
   <!-- 今日金价（30秒自动刷新） -->

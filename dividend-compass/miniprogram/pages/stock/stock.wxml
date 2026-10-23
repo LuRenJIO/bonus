@@ -5,8 +5,7 @@
 
   <!-- 加载中 -->
   <view wx:if="{{loading}}" class="loading-box">
-    <view class="loading-text">正在获取 {{name || code}} 的行情、财报与分红数据…</view>
-    <view class="loading-sub">东财财报 · 腾讯行情</view>
+    <view class="loading-text">正在获取 {{name || code}} 的行情与分红数据…</view>
   </view>
 
   <!-- 错误 -->
