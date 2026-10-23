@@ -50,7 +50,7 @@
     </view>
     <view wx:if="{{chartLoading}}" class="loading-box" style="padding: 20rpx 0 30rpx;">加载中…</view>
     <view class="price-note" wx:if="{{press}}">松开手指返回实时视图</view>
-    <view class="price-note" wx:elif="{{goldMode === 'minute' && minute}}">按住曲线滑动查看分钟数据 · {{minute.date}}（含夜盘）</view>
+    <view class="price-note" wx:elif="{{goldMode === 'minute' && minute}}">按住曲线滑动查看分钟数据 · {{minute.date}} · 自前夜 21:00 至 15:00 收盘（闭市不显示）</view>
     <view class="price-note" wx:elif="{{goldMode !== 'minute' && chart}}">按住曲线滑动查看历史点位 · {{goldMode === '3y' ? '近3年' : '近1年'}} · {{chart.source === 'futures' ? '沪金期货主力' : '上海金现货'}}</view>
   </view>
 

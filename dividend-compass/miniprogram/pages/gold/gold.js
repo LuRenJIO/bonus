@@ -9,18 +9,24 @@ const ETF_NAMES = {
 };
 
 /**
- * 黄金分时时间 → 交易时段连续槽位（剔除闭市时段）：
- *   00:00~02:30（夜盘凌晨）→ 0~150；09:00~15:00（日盘）→ 151~511；总槽 511
- * x 轴固定覆盖全部交易时段，未走到的时段留白
+ * 黄金分时时间 → 完整交易日连续槽位（剔除全部闭市时段）：
+ *   21:00~23:59（上一交易日夜盘）→ 0~179
+ *   00:00~02:30（夜盘凌晨延续）→ 180~330
+ *   09:00~10:15 / 10:30~11:30（日盘上午）→ 331~406 / 421~481
+ *   13:30~15:00（日盘下午）→ 482~572；总槽 572
+ * x 轴自前一夜盘开盘起至今日 15:00 收盘止；02:30~09:00 等闭市时段在轴上不存在
  */
 function goldSlot(t) {
   const p = String(t || '').split(':');
   const m = (parseInt(p[0], 10) || 0) * 60 + (parseInt(p[1], 10) || 0);
-  if (m <= 150) return m;
-  if (m >= 540) return m - 540 + 151;
-  return 150;   // 闭市时段（02:30~09:00）归界，正常数据不出现
+  if (m >= 1260) return m - 1260;                    // 21:00~23:59
+  if (m <= 150) return m + 180;                      // 00:00~02:30
+  if (m >= 540 && m <= 615) return m - 540 + 331;    // 09:00~10:15
+  if (m >= 630 && m <= 690) return m - 630 + 421;    // 10:30~11:30
+  if (m >= 810 && m <= 900) return m - 810 + 482;    // 13:30~15:00
+  return 330;                                        // 闭市时段防御归界（正常数据不出现）
 }
-const GOLD_TOTAL_SLOTS = 511;
+const GOLD_TOTAL_SLOTS = 572;
 
 Page({
   data: {
@@ -239,23 +245,14 @@ Page({
         ctx.fill();
       };
       if (minute) {
-        let start = 0;
-        for (let i = 1; i <= n; i++) {
-          if (i === n || slots[i] - slots[i - 1] > 1.5) {
-            drawSeg(start, i - 1);
-            start = i;
-          }
-        }
-        // 休市折叠边界：竖向虚线标记（夜盘~日盘、午休）
+        // 连续绘制（闭市时段已在槽位中剔除，不存在跨休市连线）
+        drawSeg(0, n - 1);
+        // 日盘开盘标记：09:00 处竖向虚线（夜盘/凌晨 与 日盘 的折叠边界）
         ctx.setLineDash([3, 5]);
         ctx.strokeStyle = 'rgba(230, 237, 243, 0.14)';
         ctx.lineWidth = 1;
-        for (let i = 1; i < n; i++) {
-          if (slots[i] - slots[i - 1] > 1.5) {
-            const bx = (xs[i] + xs[i - 1]) / 2;
-            ctx.beginPath(); ctx.moveTo(bx, padT); ctx.lineTo(bx, padT + plotH); ctx.stroke();
-          }
-        }
+        const dayOpenX = padL + (plotW * 331) / GOLD_TOTAL_SLOTS;
+        ctx.beginPath(); ctx.moveTo(dayOpenX, padT); ctx.lineTo(dayOpenX, padT + plotH); ctx.stroke();
         ctx.setLineDash([]);
       } else {
         drawSeg(0, n - 1);
@@ -263,10 +260,10 @@ Page({
       // x 轴标签
       ctx.fillStyle = '#59626d';
       if (minute) {
-        // 固定交易时段刻度：夜盘凌晨 / 日盘开盘 / 午盘收盘前 / 收盘
-        ctx.textAlign = 'left'; ctx.fillText('00:00', padL, H - 5);
-        ctx.textAlign = 'center'; ctx.fillText('09:00', padL + (plotW * 151) / GOLD_TOTAL_SLOTS, H - 5);
-        ctx.fillText('11:30', padL + (plotW * 301) / GOLD_TOTAL_SLOTS, H - 5);
+        // 完整交易日刻度：前日夜盘开盘 / 零点 / 日盘开盘 / 收盘
+        ctx.textAlign = 'left'; ctx.fillText('21:00', padL, H - 5);
+        ctx.fillText('00:00', padL + (plotW * 180) / GOLD_TOTAL_SLOTS, H - 5);
+        ctx.fillText('09:00', padL + (plotW * 331) / GOLD_TOTAL_SLOTS, H - 5);
         ctx.textAlign = 'right'; ctx.fillText('15:00', padL + plotW, H - 5);
       } else {
         for (let g = 0; g < 5; g++) {

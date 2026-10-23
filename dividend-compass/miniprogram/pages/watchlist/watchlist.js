@@ -60,7 +60,6 @@ Page({
         loading: false,
         stocks: enriched.filter((x) => !x.isEtf),
         etfs: enriched.filter((x) => x.isEtf),
-        spot,
         spotRows,
       });
     } catch (e) {
