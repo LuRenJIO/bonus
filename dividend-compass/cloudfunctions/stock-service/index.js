@@ -664,11 +664,13 @@ async function handleGoldBrief() {
 async function handleGoldChart() {
   const cached = cacheGet('gchart', 12 * 3600 * 1000);
   if (cached) return ok(cached);
-  const [gold, hs300m] = await Promise.all([
+  const [goldRes, hs300m] = await Promise.all([
     ds.getGoldDaily(260).catch(() => null),
     ds.getIndexMonthlyCloses(14).catch(() => null),
   ]);
-  if (!gold || gold.length < 60) return fail('金价历史数据获取失败');
+  if (!goldRes || !goldRes.rows || goldRes.rows.length < 60) return fail('金价历史数据获取失败');
+  // 强制截取近1年（约260个交易日）：东财 118 市场 lmt 参数不生效时返回全量历史
+  const gold = goldRes.rows.slice(-260);
   const closes = gold.map((g) => g.close);
   const last = closes[closes.length - 1];
   const percentile = Math.round((closes.filter((c) => c <= last).length / closes.length) * 100);
@@ -692,6 +694,7 @@ async function handleGoldChart() {
   }
   const result = {
     points: gold.map((g) => ({ d: g.date, price: g.close })),
+    source: goldRes.source,
     percentile, goldChg, hs300Chg, sameDirMonths, totalMonths,
   };
   cacheSet('gchart', result);

@@ -27,7 +27,7 @@
 
   <!-- 金价走势 + 分位 -->
   <view class="card" wx:if="{{chart}}">
-    <view class="card-title"><text>金价走势</text><text class="sub">上海金 · 近1年</text></view>
+    <view class="card-title"><text>金价走势</text><text class="sub">{{chart.source === 'futures' ? '沪金期货主力连续 · 近1年' : '上海金现货 · 近1年'}}</text></view>
     <view class="cv-wrap"><canvas type="2d" id="goldCanvas" class="gd-cv"></canvas></view>
     <view class="gd-pos">
       <text class="gd-pos-val num">{{chart.percentile}}%</text>

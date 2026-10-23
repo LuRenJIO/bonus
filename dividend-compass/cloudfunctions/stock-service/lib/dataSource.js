@@ -727,17 +727,35 @@ async function getGoldSpot() {
   return (out.shanghai || out.xau) ? out : null;
 }
 
-/** 金价日K（东财 push2his，上海金 Au9999 secid=118.AU9999，升序 [{date, close}]） */
+/**
+ * 金价日K（双源）：东财现货 Au9999（118.AU9999）→ 新浪沪金期货主力连续（AU0）。
+ * @returns {rows:[{date,close}], source:'spot'|'futures'} 或 null
+ */
 async function getGoldDaily(days) {
   const n = days || 260;
-  const url = 'https://push2his.eastmoney.com/api/qt/stock/kline/get?secid=118.AU9999' +
-    '&fields1=f1,f2,f3,f4,f5,f6&fields2=f51,f53&klt=101&fqt=0&beg=0&end=20500101&lmt=' + n;
-  const text = await httpGet(url, { headers: { Referer: 'https://quote.eastmoney.com/' }, timeout: 8000 });
-  const j = JSON.parse(text);
-  const klines = (j && j.data && j.data.klines) || [];
-  const out = klines.map((s) => {
-    const f = String(s).split(',');
-    return { date: f[0], close: parseFloat(f[1]) };
-  }).filter((x) => /^\d{4}-\d{2}-\d{2}$/.test(x.date) && isFinite(x.close) && x.close > 0);
-  return out.length >= 60 ? out : null;
+  // 1) 东财 push2his 现货
+  try {
+    const url = 'https://push2his.eastmoney.com/api/qt/stock/kline/get?secid=118.AU9999' +
+      '&fields1=f1,f2,f3,f4,f5,f6&fields2=f51,f53&klt=101&fqt=0&beg=0&end=20500101&lmt=' + n;
+    const text = await httpGet(url, { headers: { Referer: 'https://quote.eastmoney.com/' }, timeout: 8000 });
+    const j = JSON.parse(text);
+    const klines = (j && j.data && j.data.klines) || [];
+    const rows = klines.map((s) => {
+      const f = String(s).split(',');
+      return { date: f[0], close: parseFloat(f[1]) };
+    }).filter((x) => /^\d{4}-\d{2}-\d{2}$/.test(x.date) && isFinite(x.close) && x.close > 0);
+    if (rows.length >= 60) return { rows, source: 'spot' };
+  } catch (e) { /* 尝试新浪备源 */ }
+  // 2) 新浪期货主力连续 AU0（jsonp 数组，末 n 条）
+  try {
+    const url2 = 'https://stock2.finance.sina.com.cn/futures/api/jsonp.php/var%20t=/InnerFuturesNewService.getDailyKLine?symbol=AU0';
+    const text2 = await httpGet(url2, { headers: { Referer: 'https://finance.sina.com.cn/' }, timeout: 8000 });
+    const m = /\((\[[\s\S]+\])\)/.exec(text2);
+    const arr = m ? JSON.parse(m[1]) : [];
+    const rows2 = arr.map((r) => ({ date: r.d, close: parseFloat(r.c) }))
+      .filter((x) => /^\d{4}-\d{2}-\d{2}$/.test(x.date) && isFinite(x.close) && x.close > 0)
+      .slice(-n);
+    if (rows2.length >= 60) return { rows: rows2, source: 'futures' };
+  } catch (e) { /* 双源均失败 */ }
+  return null;
 }
