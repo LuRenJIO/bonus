@@ -12,7 +12,7 @@
   <view class="card" wx:if="{{spot}}">
     <view class="card-title"><text>今日金价</text><text class="sub">30秒自动刷新 · 更新于 {{spot.shanghai.time}}</text></view>
     <view class="gs-list">
-      <view class="gs-row" wx:for="{{spotRows}}" wx:key="name">
+      <view class="gs-row" wx:for="{{spotRows}}" wx:key="code">
         <view class="gs-left">
           <text class="gs-name">{{item.name}}</text>
           <text class="gs-range num" wx:if="{{item.rangeText}}">{{item.rangeText}}</text>
@@ -22,6 +22,8 @@
           <text class="gs-unit">{{item.unit}}</text>
           <text class="gs-chg num {{item.chgCls}}">{{item.chgText}}</text>
         </view>
+        <view class="gs-fav {{item.isFav ? 'on' : ''}}" catchtap="toggleSpotFav"
+              data-code="{{item.code}}" data-name="{{item.name}}">{{item.isFav ? '★' : '☆'}}</view>
       </view>
     </view>
     <view class="gs-premium" wx:if="{{spot.premium !== undefined}}">沪伦溢价 {{spot.premium >= 0 ? '+' : ''}}{{spot.premium}}%<text class="gs-premium-note">（上海金相对伦敦金到岸价，反映国内实物需求）</text></view>

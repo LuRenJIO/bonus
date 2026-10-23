@@ -2,6 +2,33 @@
  * 工具：云函数调用封装 + 数据格式化
  */
 
+/** 贵金属现货虚拟自选代码（market='GOLD'，行情由 goldBrief 填充） */
+const GOLD_FAV = [
+  { code: '999901', market: 'GOLD', name: '上海金 Au9999', key: 'shanghai', unit: '元/克' },
+  { code: '999902', market: 'GOLD', name: 'Au(T+D)', key: 'autd', unit: '元/克' },
+  { code: '999903', market: 'GOLD', name: '伦敦金', key: 'xau', unit: '美元/盎司' },
+];
+
+/**
+ * 用 goldBrief 数据填充自选列表中的贵金属现货条目（GOLD 市场）
+ * @returns {list, goldItems} 补全行情后的完整自选列表 + 其中 GOLD 条目
+ */
+function enrichGoldFavorites(list, gold) {
+  const arr = (list || []).map((it) => {
+    const def = GOLD_FAV.find((g) => g.code === it.code && it.market === 'GOLD');
+    if (!def || !gold || !gold[def.key]) return it;
+    const o = gold[def.key];
+    return Object.assign({}, it, {
+      name: def.name,
+      price: o.price,
+      changePercent: o.chgPct === undefined ? null : o.chgPct,
+      isGold: true,
+      unit: def.unit,
+    });
+  });
+  return { list: arr, goldItems: arr.filter((x) => x.isGold) };
+}
+
 /** 调用 stock-service 云函数 */
 function callService(action, data) {
   return wx.cloud
@@ -120,6 +147,8 @@ function buildLadder(dividend, price) {
 module.exports = {
   callService,
   callFavorites,
+  GOLD_FAV,
+  enrichGoldFavorites,
   fmtYi,
   fmtNum,
   chgClass,

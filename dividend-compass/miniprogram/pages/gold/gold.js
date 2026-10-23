@@ -35,6 +35,12 @@ Page({
     this.loadSpot();
     this.loadMinute();   // 默认分时模式
     this.loadEtf();
+    // 自选收藏集（现货/ETF 星标状态），加载后刷新现货行星标
+    util.callFavorites('list').then((l) => {
+      this._favSet = {};
+      (Array.isArray(l) ? l : []).forEach((f) => { this._favSet[f.code] = true; });
+      this.renderSpotRows();
+    }).catch(() => {});
     this._timer = setInterval(() => this.loadSpot(), 30000);   // 30秒轮询实时金价
   },
 
@@ -60,24 +66,52 @@ Page({
   async loadSpot() {
     try {
       const spot = await util.callService('goldBrief');
-      // 现货卡三行（涨跌对昨结算，JS 预算文案）
-      const rows = [];
-      const mk = (name, o, unit) => {
-        if (!o || o.price === undefined || o.price === null) return;
-        rows.push({
-          name,
-          unit,
-          valText: String(o.price),
-          chgText: o.chgPct === undefined || o.chgPct === null ? '--' : (o.chgPct >= 0 ? '+' : '') + o.chgPct + '%',
-          chgCls: o.chgPct >= 0 ? 'up' : 'dn',
-          rangeText: o.high !== undefined && o.low !== undefined ? '高 ' + o.high + ' / 低 ' + o.low : '',
-        });
-      };
-      mk('上海金 Au9999', spot.shanghai, '元/克');
-      mk('Au(T+D)', spot.autd, '元/克');
-      mk('伦敦金', spot.xau, '美元/盎司');
-      this.setData({ spot, spotRows: rows });
+      this._spotRaw = spot;
+      this.renderSpotRows();
     } catch (e) { /* 静默，保持上次数据 */ }
+  },
+
+  /** 现货三行渲染（含收藏星标状态） */
+  renderSpotRows() {
+    const spot = this._spotRaw;
+    if (!spot) return;
+    const favSet = this._favSet || {};
+    const rows = [];
+    const mk = (name, o, unit, code) => {
+      if (!o || o.price === undefined || o.price === null) return;
+      rows.push({
+        name, unit, code,
+        valText: String(o.price),
+        chgText: o.chgPct === undefined || o.chgPct === null ? '--' : (o.chgPct >= 0 ? '+' : '') + o.chgPct + '%',
+        chgCls: o.chgPct >= 0 ? 'up' : 'dn',
+        rangeText: o.high !== undefined && o.low !== undefined ? '高 ' + o.high + ' / 低 ' + o.low : '',
+        isFav: !!favSet[code],
+      });
+    };
+    mk('上海金 Au9999', spot.shanghai, '元/克', '999901');
+    mk('Au(T+D)', spot.autd, '元/克', '999902');
+    mk('伦敦金', spot.xau, '美元/盎司', '999903');
+    this.setData({ spot, spotRows: rows });
+  },
+
+  /** 现货品种关注/取关（虚拟代码写入自选，我的关注页可见） */
+  async toggleSpotFav(e) {
+    const { code, name } = e.currentTarget.dataset;
+    const wasFav = !!(this._favSet || {})[code];
+    try {
+      if (wasFav) {
+        await util.callFavorites('remove', { code });
+        wx.showToast({ title: '已取消关注', icon: 'none' });
+      } else {
+        await util.callFavorites('add', { code, name, market: 'GOLD' });
+        wx.showToast({ title: '已加入我的关注', icon: 'none' });
+      }
+      this._favSet = this._favSet || {};
+      this._favSet[code] = !wasFav;
+      this.renderSpotRows();
+    } catch (err) {
+      wx.showToast({ title: err.message || '操作失败', icon: 'none' });
+    }
   },
 
   /* ---------- 走势（分时/1年/3年） ---------- */

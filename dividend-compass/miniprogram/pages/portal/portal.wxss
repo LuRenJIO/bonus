@@ -1,10 +1,10 @@
 /* portal.wxss 模块门户（黑金终端风） */
 .page {
   min-height: 100vh;
-  background: #050608;
-  background-image: linear-gradient(rgba(27, 34, 44, 0.5) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(27, 34, 44, 0.5) 1px, transparent 1px);
-  background-size: 48rpx 48rpx;
+  background:
+    radial-gradient(ellipse 120% 60% at 50% -10%, rgba(212, 169, 78, 0.08), transparent 60%),
+    radial-gradient(ellipse 80% 50% at 90% 110%, rgba(76, 141, 255, 0.05), transparent 60%),
+    #050608;
   padding-bottom: 140rpx;
 }
 
@@ -38,84 +38,16 @@
 }
 .mod-soon { border-style: dashed; opacity: 0.6; }
 
-/* —— 卡片装饰层（纯 CSS，零资源） —— */
-.deco {
+/* —— 卡片装饰（base64 内联 SVG，零网络请求） —— */
+.deco-img {
   position: absolute;
-  right: -6rpx;
-  top: -10rpx;
+  right: 0;
+  top: 0;
   width: 200rpx;
   height: 170rpx;
   pointer-events: none;
+  opacity: 0.9;
 }
-
-/* 拾息红利：标准 K 线（影线 + 实体，红涨绿跌语义淡化为蓝/灰蓝主题色） */
-.deco-stock .kgroup {
-  position: absolute;
-  right: 10rpx;
-  bottom: 6rpx;
-  width: 168rpx;
-  height: 150rpx;
-  border-bottom: 1rpx solid rgba(76, 141, 255, 0.3);
-}
-.deco-stock .kline {
-  position: absolute;
-  bottom: 0;
-  width: 26rpx;
-  height: 100%;
-}
-.kl1 { right: 8rpx; } .kl2 { right: 50rpx; } .kl3 { right: 92rpx; } .kl4 { right: 134rpx; }
-.kwire {
-  position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 2rpx;
-  height: 100%;
-  background: rgba(76, 141, 255, 0.35);
-}
-.kbody {
-  position: absolute;
-  left: 0;
-  width: 100%;
-  border-radius: 3rpx;
-}
-.kb-up {
-  background: linear-gradient(180deg, rgba(120, 175, 255, 0.75), rgba(76, 141, 255, 0.3));
-  box-shadow: 0 0 10rpx rgba(76, 141, 255, 0.25);
-}
-.kb-dn { background: rgba(90, 105, 125, 0.55); }
-.kl1 .kbody { bottom: 26rpx; height: 58rpx; }
-.kl2 .kbody { bottom: 48rpx; height: 40rpx; }
-.kl3 .kbody { bottom: 34rpx; height: 66rpx; }
-.kl4 .kbody { bottom: 20rpx; height: 84rpx; }
-
-/* 拾金观察：金锭三叠（梯形堆叠 + 顶面高光 + 光点） */
-.deco-gold .ingot {
-  position: absolute;
-  background: linear-gradient(180deg, #f0d08a 0%, #d4a94e 55%, #9a7420 100%);
-  clip-path: polygon(18% 0, 82% 0, 100% 100%, 0 100%);
-  box-shadow: 0 4rpx 14rpx rgba(212, 169, 78, 0.35);
-}
-.deco-gold .ingot::before {
-  content: "";
-  position: absolute;
-  top: 3rpx; left: 12%; right: 12%;
-  height: 5rpx;
-  border-radius: 3rpx;
-  background: rgba(255, 244, 214, 0.75);
-}
-.deco-gold .ig1 { right: 4rpx; bottom: 4rpx; width: 150rpx; height: 44rpx; }
-.deco-gold .ig2 { right: 26rpx; bottom: 52rpx; width: 112rpx; height: 40rpx; }
-.deco-gold .ig3 { right: 46rpx; bottom: 96rpx; width: 84rpx; height: 36rpx; }
-.deco-gold .spark {
-  position: absolute;
-  width: 6rpx;
-  height: 6rpx;
-  border-radius: 50%;
-  background: #fff3d6;
-  box-shadow: 0 0 10rpx rgba(255, 243, 214, 0.9);
-}
-.deco-gold .s1 { right: 10rpx; top: 10rpx; }
-.deco-gold .s2 { right: 150rpx; bottom: 30rpx; opacity: 0.6; }
 
 /* 我的关注：星标容器 */
 .watch-ic-solid {

@@ -26,7 +26,7 @@
   border-bottom: 1rpx solid var(--border);
 }
 .gs-row:last-of-type { border-bottom: none; }
-.gs-left { display: flex; flex-direction: column; }
+.gs-left { display: flex; flex-direction: column; flex: 1; }
 .gs-name { font-size: 24rpx; }
 .gs-range { font-size: 19rpx; color: var(--text-dim); margin-top: 4rpx; }
 .gs-right { display: flex; align-items: baseline; gap: 12rpx; }
@@ -35,6 +35,18 @@
 .gs-chg { font-size: 24rpx; font-weight: 600; min-width: 90rpx; text-align: right; }
 .gs-chg.up { color: #f04b5a; }
 .gs-chg.dn { color: #00b578; }
+.gs-fav {
+  width: 64rpx;
+  height: 64rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 38rpx;
+  color: var(--text-dim);
+  flex-shrink: 0;
+  margin-left: 10rpx;
+}
+.gs-fav.on { color: var(--gold-hi); text-shadow: var(--gold-glow); }
 .gs-premium {
   margin-top: 14rpx;
   padding: 10rpx 16rpx;

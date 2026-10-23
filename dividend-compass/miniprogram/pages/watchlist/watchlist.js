@@ -8,7 +8,7 @@ Page({
     manageMode: false,   // 管理模式：排序/删除
     stocks: null,      // 股票自选（含行情）
     etfs: null,        // ETF/基金自选（含行情）
-    spotRows: null,    // 贵金属现货三行
+    golds: null,       // 贵金属现货自选（用户收藏的品种）
   },
 
   onLoad() {
@@ -26,7 +26,8 @@ Page({
         util.callFavorites('list').catch(() => []),
         util.callService('goldBrief').catch(() => null),
       ]);
-      const arr = Array.isArray(list) ? list : [];
+      const enrichedRes = util.enrichGoldFavorites(Array.isArray(list) ? list : [], gold);
+      const arr = enrichedRes.list;
       const codes = arr.map((it) => ({ code: it.code, market: it.market }));
       let quotes = [];
       if (codes.length) {
@@ -35,31 +36,15 @@ Page({
       const qMap = {};
       quotes.forEach((q) => { qMap[q.code] = q; });
       const enriched = arr.map((it) => Object.assign({}, it, {
-        price: qMap[it.code] ? qMap[it.code].price : null,
-        changePercent: qMap[it.code] ? qMap[it.code].changePercent : null,
-        isEtf: /^(51|15|56|58|16)/.test(it.code),   // 场内基金代码段
+        price: it.isGold ? it.price : (qMap[it.code] ? qMap[it.code].price : null),
+        changePercent: it.isGold ? it.changePercent : (qMap[it.code] ? qMap[it.code].changePercent : null),
+        isEtf: !it.isGold && /^(51|15|56|58|16)/.test(it.code),   // 场内基金代码段
       }));
-      // 贵金属现货三行（JS 预算文案）
-      let spotRows = [];
-      if (gold) {
-        const mk = (name, o, unit) => {
-          if (!o || o.price === undefined || o.price === null) return;
-          spotRows.push({
-            name, unit,
-            valText: String(o.price),
-            chgText: o.chgPct === undefined || o.chgPct === null ? '--' : (o.chgPct >= 0 ? '+' : '') + o.chgPct + '%',
-            chgCls: o.chgPct >= 0 ? 'up' : 'dn',
-          });
-        };
-        mk('上海金 Au9999', gold.shanghai, '元/克');
-        mk('Au(T+D)', gold.autd, '元/克');
-        mk('伦敦金', gold.xau, '美元/盎司');
-      }
       this.setData({
         loading: false,
-        stocks: enriched.filter((x) => !x.isEtf),
+        golds: enriched.filter((x) => x.isGold),
+        stocks: enriched.filter((x) => !x.isGold && !x.isEtf),
         etfs: enriched.filter((x) => x.isEtf),
-        spotRows,
       });
     } catch (e) {
       this.setData({ loading: false, error: e.message || '加载失败' });
@@ -100,6 +85,10 @@ Page({
   goStock(e) {
     if (this.data.manageMode) return;   // 管理模式下不跳详情
     const d = e.currentTarget.dataset;
+    if (d.gold) {   // 贵金属现货 → 跳拾金观察模块
+      wx.navigateTo({ url: '/pages/gold/gold' });
+      return;
+    }
     wx.navigateTo({ url: '/pages/stock/stock?code=' + d.code + '&name=' + encodeURIComponent(d.name || '') });
   },
 

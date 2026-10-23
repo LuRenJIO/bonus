@@ -45,18 +45,23 @@ Page({
       return;
     }
     this.setData({ favList: list, favLoading: false });
-    // 批量拉取行情
+    // 贵金属现货条目行情填充（GOLD 市场）+ 批量拉取股票/ETF行情
     if (list.length) {
       try {
-        const quotes = await util.callService('quotes', {
-          list: list.map((it) => ({ code: it.code, market: it.market })),
-        });
+        const [gold, quotes] = await Promise.all([
+          util.callService('goldBrief').catch(() => null),
+          util.callService('quotes', {
+            list: list.map((it) => ({ code: it.code, market: it.market })),
+          }).catch(() => []),
+        ]);
+        const enrichedRes = util.enrichGoldFavorites(list, gold);
+        const enrichedBase = enrichedRes.list;
         const qMap = {};
-        quotes.forEach((q) => { qMap[q.code] = q; });
+        (quotes || []).forEach((q) => { qMap[q.code] = q; });
         this.setData({
-          favList: list.map((it) => Object.assign({}, it, {
-            price: qMap[it.code] ? qMap[it.code].price : null,
-            changePercent: qMap[it.code] ? qMap[it.code].changePercent : null,
+          favList: enrichedBase.map((it) => Object.assign({}, it, {
+            price: it.isGold ? it.price : (qMap[it.code] ? qMap[it.code].price : null),
+            changePercent: it.isGold ? it.changePercent : (qMap[it.code] ? qMap[it.code].changePercent : null),
           })),
         });
       } catch (e) { /* 行情失败不影响列表展示 */ }
@@ -110,6 +115,10 @@ Page({
   /* ---------- 跳转 ---------- */
   goStock(e) {
     const d = e.currentTarget.dataset;
+    if (d.gold) {   // 贵金属现货自选 → 跳拾金观察模块
+      wx.navigateTo({ url: '/pages/gold/gold' });
+      return;
+    }
     wx.navigateTo({
       url: '/pages/stock/stock?code=' + d.code + '&name=' + encodeURIComponent(d.name || '') +
         '&market=' + (d.market || ''),

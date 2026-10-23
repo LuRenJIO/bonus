@@ -20,15 +20,26 @@
   </view>
 
   <block wx:else>
-    <!-- 贵金属现货（拾金观察固定关注） -->
-    <view class="card" wx:if="{{spotRows}}">
-      <view class="card-title"><text>贵金属现货</text><text class="sub">拾金观察</text></view>
-      <view class="wl-spot-row" wx:for="{{spotRows}}" wx:key="name">
-        <text class="wsp-name">{{item.name}}</text>
-        <view class="wsp-right">
-          <text class="wsp-val num">{{item.valText}}</text>
-          <text class="wsp-unit">{{item.unit}}</text>
-          <text class="wsp-chg num {{item.chgCls}}">{{item.chgText}}</text>
+    <!-- 贵金属现货（用户在拾金观察收藏的品种） -->
+    <view class="card" wx:if="{{golds.length}}">
+      <view class="card-title"><text>贵金属现货</text><text class="sub">来自拾金观察</text></view>
+      <view class="wl-row" wx:for="{{golds}}" wx:key="code"
+            data-gold="{{item.isGold}}" bindtap="goStock" hover-class="{{manageMode ? '' : 'press'}}">
+        <view class="wl-moves" wx:if="{{manageMode}}">
+          <view class="mv-btn dis">★</view>
+        </view>
+        <view class="wl-left">
+          <view class="wl-name">{{item.name}}</view>
+          <view class="wl-code">现货 · 拾金观察</view>
+        </view>
+        <view class="wl-right">
+          <view class="wl-price num">{{item.price || '--'}}</view>
+          <view class="wl-chg num {{item.changePercent > 0 ? 'up' : item.changePercent < 0 ? 'down' : 'flat'}}">
+            {{item.changePercent == null ? '--' : (item.changePercent > 0 ? '+' : '') + item.changePercent + '%'}}
+          </view>
+        </view>
+        <view class="wl-del" data-code="{{item.code}}" data-name="{{item.name}}" catchtap="goRemove">
+          <ui-icon name="close" size="26" color="#59626d" />
         </view>
       </view>
     </view>

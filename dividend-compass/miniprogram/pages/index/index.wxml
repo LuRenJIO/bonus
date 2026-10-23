@@ -150,13 +150,15 @@
           data-code="{{item.code}}"
           data-name="{{item.name}}"
           data-market="{{item.market}}"
+          data-gold="{{item.isGold}}"
           bindtap="goStock"
           hover-class="press"
         >
           <view class="fav-mark"></view>
           <view class="fav-left">
             <view class="fav-name">{{item.name}}</view>
-            <view class="fav-code num">{{item.market}} {{item.code}}</view>
+            <view class="fav-code num" wx:if="{{!item.isGold}}">{{item.market}} {{item.code}}</view>
+            <view class="fav-code" wx:else>现货 · 拾金观察</view>
           </view>
           <view class="fav-right">
             <view class="fav-price num">{{item.price || '--'}}</view>
