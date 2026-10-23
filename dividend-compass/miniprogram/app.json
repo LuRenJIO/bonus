@@ -8,7 +8,8 @@
     "pages/screener/screener",
     "pages/report/report",
     "pages/reinvest/reinvest",
-    "pages/taxcalc/taxcalc"
+    "pages/taxcalc/taxcalc",
+    "pages/gold/gold"
   ],
   "window": {
     "navigationBarBackgroundColor": "#0e1116",

@@ -1,0 +1,94 @@
+<!--gold.wxml 黄金观察：给红利收息人的资产配置视角-->
+<view class="page">
+
+  <!-- 今日金价 -->
+  <view class="card" wx:if="{{spot}}">
+    <view class="card-title"><text>今日金价</text><text class="sub">{{spot.shanghai.date}} {{spot.shanghai.time}}</text></view>
+    <view class="gs-grid">
+      <view class="gs-item">
+        <text class="gs-name">上海金 Au9999</text>
+        <text class="gs-price num">{{spot.shanghai.price}}</text>
+        <text class="gs-sub num">元/克 · {{spot.shanghai.chgPct >= 0 ? '+' : ''}}{{spot.shanghai.chgPct}}%</text>
+      </view>
+      <view class="gs-item">
+        <text class="gs-name">Au(T+D)</text>
+        <text class="gs-price num">{{spot.autd.price}}</text>
+        <text class="gs-sub num">元/克 · {{spot.autd.chgPct >= 0 ? '+' : ''}}{{spot.autd.chgPct}}%</text>
+      </view>
+      <view class="gs-item">
+        <text class="gs-name">伦敦金 (美元/盎司)</text>
+        <text class="gs-price num">{{spot.xau.price}}</text>
+        <text class="gs-sub num">{{spot.xau.chgPct >= 0 ? '+' : ''}}{{spot.xau.chgPct}}%</text>
+      </view>
+    </view>
+    <view class="gs-premium" wx:if="{{spot.premium !== undefined}}">沪伦溢价 {{spot.premium >= 0 ? '+' : ''}}{{spot.premium}}%<text class="gs-premium-note">（上海金相对伦敦金到岸价，反映国内实物需求）</text></view>
+  </view>
+  <view wx:elif="{{loading}}" class="loading-box">加载中…</view>
+
+  <!-- 金价走势 + 分位 -->
+  <view class="card" wx:if="{{chart}}">
+    <view class="card-title"><text>金价走势</text><text class="sub">上海金 · 近1年</text></view>
+    <view class="cv-wrap"><canvas type="2d" id="goldCanvas" class="gd-cv"></canvas></view>
+    <view class="gd-pos">
+      <text class="gd-pos-val num">{{chart.percentile}}%</text>
+      <text class="gd-pos-note">处于近1年{{chart.percentile >= 70 ? '高位' : chart.percentile <= 30 ? '低位' : '中位'}}区间 · 高位不代表不能配，但安全边际更薄</text>
+    </view>
+  </view>
+
+  <!-- 股金跷跷板 -->
+  <view class="card" wx:if="{{chart && vsRows}}">
+    <view class="card-title"><text>股金跷跷板</text><text class="sub">近1年涨跌对比</text></view>
+    <view class="vs-row" wx:for="{{vsRows}}" wx:key="label">
+      <text class="vs-k">{{item.label}}</text>
+      <view class="vs-track"><view class="vs-fill {{item.cls}}" style="width: {{item.pct}}%"></view></view>
+      <text class="vs-v num {{item.cls}}">{{item.valText}}</text>
+    </view>
+    <view class="vs-note" wx:if="{{chart.sameDirMonths !== null}}">近{{chart.totalMonths}}个月中 {{chart.sameDirMonths}} 个月股金同向{{chart.sameDirMonths <= 5 ? '——反向月份居多，黄金的对冲属性真实存在' : chart.sameDirMonths >= 9 ? '——同向月份居多，本阶段对冲效果有限' : '——对冲特征一般，需结合仓位看'}}。</view>
+    <view class="price-note">黄金与股票长期低相关，配置的意义是平滑组合波动，而非博取短期收益</view>
+  </view>
+
+  <!-- 黄金ETF -->
+  <view class="card" wx:if="{{etfs}}">
+    <view class="card-title"><text>场内黄金ETF</text><text class="sub">跟踪金价 · 最省事的配置工具</text></view>
+    <view class="ge-row" wx:for="{{etfs}}" wx:key="code"
+          data-code="{{item.code}}" data-name="{{item.name}}" bindtap="goStock">
+      <view class="ge-left">
+        <text class="ge-name">{{item.name}}</text>
+        <text class="ge-code num">{{item.code}}</text>
+      </view>
+      <text class="ge-price num">{{item.price === null ? '--' : item.price}}</text>
+      <text class="ge-chg num {{item.changePercent >= 0 ? 'up' : 'down'}}">{{item.changePercent === null ? '--' : (item.changePercent > 0 ? '+' : '') + item.changePercent + '%'}}</text>
+    </view>
+    <view class="price-note">场内ETF跟踪金价、免印花税、100元起，对比金店饰品金（工费溢价20%+）是更纯粹的工具</view>
+  </view>
+
+  <!-- 配置参考 -->
+  <view class="card">
+    <view class="card-title"><text>配置参考</text><text class="sub">常见做法，非建议</text></view>
+    <view class="gc-edu">
+      <view class="gc-edu-row">· 黄金是零现金流资产——与红利股"分红即工资"的属性互补，配置逻辑是<span class="gold-text">对冲与平滑</span>，不是收息</view>
+      <view class="gc-edu-row">· 常见家庭组合中黄金占比 5%~10%，过高会拖累长期现金流</view>
+      <view class="gc-edu-row">· 场内ETF vs 金店实物：ETF 贴近金价、交易灵活；实物金有工费与买卖价差</view>
+    </view>
+    <view class="gc-calc">
+      <view class="gc-calc-title">配置计算器</view>
+      <view class="gc-calc-in">
+        <input class="gc-in num" type="number" placeholder="输入可投资金额(元)" placeholder-class="tc-ph"
+               value="{{amount}}" bindinput="onAmountInput" />
+        <view class="gc-btn" bindtap="onCalc">估算</view>
+      </view>
+      <view class="gc-calc-out" wx:if="{{calc}}">
+        <view class="gc-row" wx:for="{{calc}}" wx:key="pct">
+          <text class="gc-pct num">{{item.pct}}%</text>
+          <text class="gc-amt num">{{item.amountText}} 元</text>
+          <text class="gc-shares num">约 {{item.shares}} 份 518880</text>
+        </view>
+        <view class="gc-note">份额按 518880 最新价估算，场内交易以100份为最小单位；仅为比例换算，非投资建议</view>
+      </view>
+    </view>
+  </view>
+
+  <view class="footer-tip">
+    <view>黄金行情仅供参考，不构成投资建议；金价波动较大，配置比例应与自身风险承受能力匹配</view>
+  </view>
+</view>

@@ -675,5 +675,69 @@ module.exports = {
   getValuationSnapshot: withRetry(getValuationSnapshot, 1),
   getMarketDividendEvents: withRetry(getMarketDividendEvents, 1),
   getDividendHistory: withRetry(getDividendHistory, 2),
+  getGoldSpot: withRetry(getGoldSpot, 1),
+  getGoldDaily: getGoldDaily,           // 单源东财，失败由调用方降级
   buildSecid,
 };
+
+/* ---------------- 12. 贵金属现货（新浪，GBK 响应仅解析 ASCII 数字字段） ---------------- */
+
+function sinaField(text, key) {
+  const re = new RegExp('hq_str_' + key + '="([^"]*)"');
+  const m = re.exec(text);
+  return m ? m[1].split(',') : null;
+}
+
+/**
+ * 贵金属现货快照：上海金9999 / Au(T+D) / 伦敦金 / USDCNH 汇率 / 沪伦溢价
+ * 溢价 = 上海金(元/克) ÷ 伦敦金折算(元/克) − 1（正常在 ±1% 内，可作字段正确性自检）
+ */
+async function getGoldSpot() {
+  const url = 'https://hq.sinajs.cn/list=gds_AU9999,gds_AUTD,hf_XAU,fx_susdcnh';
+  const text = await httpGet(url, { headers: { Referer: 'https://finance.sina.com.cn/' }, timeout: 8000 });
+  const au9999 = sinaField(text, 'gds_AU9999');
+  const autd = sinaField(text, 'gds_AUTD');
+  const xau = sinaField(text, 'hf_XAU');
+  const fx = sinaField(text, 'fx_susdcnh');
+  const num = (s) => { const v = parseFloat(s); return isFinite(v) && v > 0 ? v : null; };
+  const out = {};
+  if (au9999 && au9999.length >= 13) {
+    out.shanghai = { price: num(au9999[0]), high: num(au9999[4]), low: num(au9999[5]), time: au9999[6], prevSettle: num(au9999[7]), date: au9999[12] };
+    if (out.shanghai.price && out.shanghai.prevSettle) {
+      out.shanghai.chgPct = +((out.shanghai.price / out.shanghai.prevSettle - 1) * 100).toFixed(2);
+    }
+  }
+  if (autd && autd.length >= 13) {
+    out.autd = { price: num(autd[0]), high: num(autd[4]), low: num(autd[5]), time: autd[6], prevSettle: num(autd[7]), date: autd[12] };
+    if (out.autd.price && out.autd.prevSettle) {
+      out.autd.chgPct = +((out.autd.price / out.autd.prevSettle - 1) * 100).toFixed(2);
+    }
+  }
+  if (xau && xau.length > 13) {
+    out.xau = { price: num(xau[0]), high: num(xau[4]), low: num(xau[5]), time: xau[6], prevClose: num(xau[7]), date: xau[12] };
+    if (out.xau.price && out.xau.prevClose) {
+      out.xau.chgPct = +((out.xau.price / out.xau.prevClose - 1) * 100).toFixed(2);
+    }
+  }
+  if (fx && fx.length > 8) out.usdcnh = { price: num(fx[3]), time: fx[0] };
+  if (out.shanghai && out.shanghai.price && out.xau && out.xau.price && out.usdcnh && out.usdcnh.price) {
+    const xauCnyPerG = out.xau.price / 31.1035 * out.usdcnh.price;
+    if (xauCnyPerG > 0) out.premium = +((out.shanghai.price / xauCnyPerG - 1) * 100).toFixed(2);
+  }
+  return (out.shanghai || out.xau) ? out : null;
+}
+
+/** 金价日K（东财 push2his，上海金 Au9999 secid=118.AU9999，升序 [{date, close}]） */
+async function getGoldDaily(days) {
+  const n = days || 260;
+  const url = 'https://push2his.eastmoney.com/api/qt/stock/kline/get?secid=118.AU9999' +
+    '&fields1=f1,f2,f3,f4,f5,f6&fields2=f51,f53&klt=101&fqt=0&beg=0&end=20500101&lmt=' + n;
+  const text = await httpGet(url, { headers: { Referer: 'https://quote.eastmoney.com/' }, timeout: 8000 });
+  const j = JSON.parse(text);
+  const klines = (j && j.data && j.data.klines) || [];
+  const out = klines.map((s) => {
+    const f = String(s).split(',');
+    return { date: f[0], close: parseFloat(f[1]) };
+  }).filter((x) => /^\d{4}-\d{2}-\d{2}$/.test(x.date) && isFinite(x.close) && x.close > 0);
+  return out.length >= 60 ? out : null;
+}

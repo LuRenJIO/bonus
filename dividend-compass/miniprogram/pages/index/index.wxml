@@ -54,6 +54,14 @@
       </view>
     </view>
 
+    <!-- 今日金价入口 -->
+    <view class="gold-entry" wx:if="{{gold}}" bindtap="goGold">
+      <text class="ge-label">今日金价</text>
+      <text class="ge-val num">上海金 {{gold.price}} 元/克</text>
+      <text class="ge-chg num {{gold.chgPct >= 0 ? 'up' : 'down'}}" wx:if="{{gold.chgPct !== null}}">{{gold.chgPct >= 0 ? '+' : ''}}{{gold.chgPct}}%</text>
+      <text class="ge-arrow">›</text>
+    </view>
+
     <!-- 免责声明 -->
     <view class="disclaimer">
       <text class="dc-text">ⓘ 数据与内容仅供参考，不构成投资建议 · 股市有风险，投资需谨慎</text>

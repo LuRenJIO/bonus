@@ -14,6 +14,7 @@ Page({
     briefItems: [],
     alertHits: [],
     alertHitsText: '',
+    gold: null,         // 上海金（首页金价入口）
     exSheetOpen: false,   // 今日除息弹层
     exTodayList: [],
     exTodayCash: null,
@@ -127,6 +128,10 @@ Page({
     wx.navigateTo({ url: '/pages/screener/screener' });
   },
 
+  goGold() {
+    wx.navigateTo({ url: '/pages/gold/gold' });
+  },
+
   /* ---------- 红利速览 ---------- */
   async loadBrief() {
     try {
@@ -145,6 +150,7 @@ Page({
         briefItems: items,
         exTodayList: d.exTodayTop || [],
         exTodayCash: d.exTodayCash,
+        gold: d.gold || null,
       });
     } catch (e) { /* 速览失败不影响主功能 */ }
   },

@@ -1,0 +1,109 @@
+/* 黄金观察页 */
+.page { min-height: 100vh; padding-bottom: 60rpx; }
+
+/* 今日金价 */
+.gs-grid { display: flex; }
+.gs-item { flex: 1; display: flex; flex-direction: column; align-items: center; }
+.gs-name { font-size: 20rpx; color: var(--text-dim); }
+.gs-price { font-size: 36rpx; font-weight: 700; margin-top: 8rpx; }
+.gs-sub { font-size: 20rpx; color: var(--text-dim); margin-top: 6rpx; }
+.gs-premium {
+  margin-top: 16rpx;
+  padding: 10rpx 16rpx;
+  background: var(--bg);
+  border-radius: 10rpx;
+  font-size: 21rpx;
+  color: #e8b95f;
+  font-weight: 600;
+}
+.gs-premium-note { color: var(--text-dim); font-weight: 400; }
+
+/* 金价走势 */
+.gd-cv { width: 100%; height: 320rpx; }
+.gd-pos { display: flex; align-items: baseline; gap: 14rpx; margin-top: 10rpx; }
+.gd-pos-val { font-size: 40rpx; font-weight: 700; color: var(--gold); }
+.gd-pos-note { font-size: 20rpx; color: var(--text-dim); line-height: 1.6; flex: 1; }
+
+/* 股金跷跷板 */
+.vs-row { display: flex; align-items: center; gap: 14rpx; padding: 10rpx 0; }
+.vs-k { width: 130rpx; font-size: 22rpx; color: var(--text-sub); flex-shrink: 0; }
+.vs-track { flex: 1; height: 16rpx; background: var(--bg); border-radius: 999rpx; overflow: hidden; }
+.vs-fill { height: 100%; border-radius: 999rpx; }
+.vs-fill.up { background: #e8b95f; }
+.vs-fill.dn { background: #00b578; }
+.vs-v { width: 130rpx; text-align: right; font-size: 23rpx; font-weight: 600; flex-shrink: 0; }
+.vs-v.up { color: #f04b5a; }
+.vs-v.dn { color: #00b578; }
+.vs-note {
+  margin-top: 12rpx;
+  padding: 14rpx 16rpx;
+  background: var(--bg);
+  border-radius: 10rpx;
+  font-size: 21rpx;
+  color: var(--text-sub);
+  line-height: 1.6;
+}
+
+/* 黄金ETF */
+.ge-row {
+  display: flex;
+  align-items: center;
+  padding: 16rpx 0;
+  border-bottom: 1rpx solid var(--border);
+}
+.ge-row:last-of-type { border-bottom: none; }
+.ge-left { flex: 1; display: flex; flex-direction: column; }
+.ge-name { font-size: 26rpx; }
+.ge-code { font-size: 20rpx; color: var(--text-dim); margin-top: 4rpx; }
+.ge-price { width: 180rpx; text-align: right; font-size: 28rpx; font-weight: 600; }
+.ge-chg { width: 150rpx; text-align: right; font-size: 24rpx; font-weight: 600; }
+.ge-chg.up { color: #f04b5a; }
+.ge-chg.down { color: #00b578; }
+
+/* 配置参考 */
+.gc-edu-row { font-size: 22rpx; color: var(--text-sub); line-height: 1.8; }
+.gc-calc { margin-top: 18rpx; padding-top: 16rpx; border-top: 1rpx solid var(--border); }
+.gc-calc-title { font-size: 23rpx; font-weight: 600; margin-bottom: 12rpx; }
+.gc-calc-in { display: flex; gap: 14rpx; }
+.gc-in {
+  flex: 1;
+  background: var(--bg);
+  border-radius: 10rpx;
+  height: 72rpx;
+  line-height: 72rpx;
+  padding: 0 20rpx;
+  font-size: 27rpx;
+  font-weight: 600;
+}
+.tc-ph { color: var(--text-dim); }
+.gc-btn {
+  width: 140rpx;
+  height: 72rpx;
+  line-height: 72rpx;
+  text-align: center;
+  background: var(--gold);
+  color: #1a1d24;
+  font-size: 25rpx;
+  font-weight: 600;
+  border-radius: 10rpx;
+}
+.gc-calc-out { margin-top: 14rpx; }
+.gc-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10rpx 0;
+  font-size: 23rpx;
+}
+.gc-pct { width: 80rpx; font-weight: 700; color: var(--gold); }
+.gc-amt { flex: 1; text-align: right; margin-right: 20rpx; }
+.gc-shares { width: 260rpx; text-align: right; color: var(--text-dim); font-size: 21rpx; }
+.gc-note { font-size: 19rpx; color: var(--text-dim); margin-top: 10rpx; line-height: 1.6; }
+
+.footer-tip {
+  padding: 10rpx 40rpx 40rpx;
+  font-size: 20rpx;
+  color: var(--text-dim);
+  line-height: 1.8;
+  text-align: center;
+}

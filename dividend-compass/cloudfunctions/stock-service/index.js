@@ -213,11 +213,12 @@ async function handleHomeBrief() {
   if (cached) return ok(cached);
 
   const today = div.toDateStr(new Date());
-  const [sh, csi, hs300, cal7] = await Promise.all([
+  const [sh, csi, hs300, cal7, gold] = await Promise.all([
     ds.getQuote('000001', 'SH').catch(() => null),   // 上证指数（大盘参照）
     ds.getQuote('000922', 'SH').catch(() => null),   // 中证红利指数
     ds.getQuote('000300', 'SH').catch(() => null),   // 沪深300指数
     ds.getExDividendCalendar(7).catch(() => []),
+    ds.getGoldSpot().catch(() => null),              // 上海金（首页金价入口）
   ]);
 
   // 今日除息（按代码去重，防同股多条记录重复计派现）；7日除息总数
@@ -242,6 +243,10 @@ async function handleHomeBrief() {
     exTodayCash: cashSum > 0 ? +(cashSum / 1e8).toFixed(1) : null,   // 今日派现总额（亿元）
     exWeekCount: weekCount,
     exTodayTop: exTodayList.slice(0, 50).map((r) => ({ code: r.code, name: r.name, perShare: r.perShare })),
+    gold: (gold && gold.shanghai && gold.shanghai.price) ? {
+      price: gold.shanghai.price,
+      chgPct: gold.shanghai.chgPct === undefined ? null : gold.shanghai.chgPct,
+    } : null,                                                        // 上海金（首页金价入口）
   };
   cacheSet(ck, result);
   return ok(result);
@@ -643,6 +648,56 @@ async function handleReinvest(event) {
   return ok(result);
 }
 
+/* ---------------- 黄金观察 ---------------- */
+
+/** 贵金属现货快照（10分钟缓存）：上海金/Au(T+D)/伦敦金/沪伦溢价 */
+async function handleGoldBrief() {
+  const cached = cacheGet('gbrief', 10 * 60 * 1000);
+  if (cached) return ok(cached);
+  const spot = await ds.getGoldSpot().catch(() => null);
+  if (!spot) return fail('贵金属行情获取失败');
+  cacheSet('gbrief', spot);
+  return ok(spot);
+}
+
+/** 金价走势与股金对比（12小时缓存）：近1年日K + 分位 + 沪深300涨跌/同向月计数 */
+async function handleGoldChart() {
+  const cached = cacheGet('gchart', 12 * 3600 * 1000);
+  if (cached) return ok(cached);
+  const [gold, hs300m] = await Promise.all([
+    ds.getGoldDaily(260).catch(() => null),
+    ds.getIndexMonthlyCloses(14).catch(() => null),
+  ]);
+  if (!gold || gold.length < 60) return fail('金价历史数据获取失败');
+  const closes = gold.map((g) => g.close);
+  const last = closes[closes.length - 1];
+  const percentile = Math.round((closes.filter((c) => c <= last).length / closes.length) * 100);
+  const goldChg = +((last / closes[0] - 1) * 100).toFixed(1);
+  let hs300Chg = null, sameDirMonths = null, totalMonths = null;
+  if (hs300m && hs300m.length >= 13) {
+    const w = hs300m.slice(-13);   // 13个月末 → 12段
+    hs300Chg = +((w[w.length - 1].close / w[0].close - 1) * 100).toFixed(1);
+    // 金价按月取末值，与沪深300逐月比方向（沪深300月K字段为 ym）
+    const gMonth = {};
+    gold.forEach((g) => { gMonth[g.date.slice(0, 7)] = g.close; });
+    let same = 0, cnt = 0;
+    for (let i = 1; i < w.length; i++) {
+      const gm = gMonth[w[i].ym];
+      const gmPrev = gMonth[w[i - 1].ym];
+      if (!isFinite(gm) || !isFinite(gmPrev)) continue;
+      cnt++;
+      if ((gm >= gmPrev) === (w[i].close >= w[i - 1].close)) same++;
+    }
+    if (cnt >= 6) { sameDirMonths = same; totalMonths = cnt; }
+  }
+  const result = {
+    points: gold.map((g) => ({ d: g.date, price: g.close })),
+    percentile, goldChg, hs300Chg, sameDirMonths, totalMonths,
+  };
+  cacheSet('gchart', result);
+  return ok(result);
+}
+
 /* ---------------- 沪深300月K（12小时缓存，全股票共享） ---------------- */
 async function getIndexCloses() {
   const cached = cacheGet('idx:hs300', 12 * 3600 * 1000);
@@ -864,6 +919,8 @@ exports.main = async (event = {}) => {
       case 'spread': return await handleSpread(event);
       case 'annualReport': return await handleAnnualReport(event);
       case 'reinvest': return await handleReinvest(event);
+      case 'goldBrief': return await handleGoldBrief();
+      case 'goldChart': return await handleGoldChart();
       default: return fail('未知 action: ' + event.action);
     }
   } catch (e) {
