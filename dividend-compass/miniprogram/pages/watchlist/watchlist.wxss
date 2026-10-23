@@ -1,0 +1,83 @@
+/* watchlist.wxss 我的关注 */
+.page {
+  min-height: 100vh;
+  padding-bottom: 160rpx;
+}
+
+/* 模块归属条 */
+.module-tag {
+  margin: 20rpx 24rpx 0;
+  padding: 12rpx 20rpx;
+  display: flex;
+  align-items: center;
+  gap: 14rpx;
+  background: linear-gradient(135deg, #101a14, #0a0d0b);
+  border: 1rpx solid #274036;
+  border-radius: var(--radius-md);
+}
+.mt-ic { display: flex; align-items: center; }
+.mt-name { font-size: 23rpx; font-weight: 600; color: #7fd8a8; flex: 1; }
+.mt-cur { font-size: 19rpx; color: var(--text-dim); }
+
+/* 骨架 */
+.wl-skeleton { padding: 10rpx 24rpx; }
+.sk-row { height: 100rpx; margin-bottom: 16rpx; }
+.wl-retry {
+  margin: 20rpx auto 0;
+  width: 180rpx;
+  height: 64rpx;
+  line-height: 64rpx;
+  text-align: center;
+  border: 1rpx solid var(--border);
+  border-radius: 32rpx;
+  font-size: 24rpx;
+  color: var(--text-sub);
+}
+
+/* 现货行 */
+.wl-spot-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16rpx 0;
+  border-bottom: 1rpx solid var(--border);
+}
+.wl-spot-row:last-of-type { border-bottom: none; }
+.wsp-name { font-size: 24rpx; }
+.wsp-right { display: flex; align-items: baseline; gap: 12rpx; }
+.wsp-val { font-size: 28rpx; font-weight: 600; }
+.wsp-unit { font-size: 19rpx; color: var(--text-dim); }
+.wsp-chg { font-size: 23rpx; font-weight: 600; min-width: 88rpx; text-align: right; }
+.wsp-chg.up { color: #f04b5a; }
+.wsp-chg.dn { color: #00b578; }
+
+/* 自选行 */
+.wl-row {
+  display: flex;
+  align-items: center;
+  padding: 22rpx 0;
+  border-bottom: 1rpx solid var(--border);
+  border-radius: var(--radius-md);
+  transition: transform 0.12s ease, background-color 0.12s ease, opacity 0.12s ease;
+}
+.wl-row:last-of-type { border-bottom: none; }
+.wl-left { flex: 1; }
+.wl-name { font-size: 30rpx; font-weight: 500; }
+.wl-code { font-size: 22rpx; color: var(--text-dim); margin-top: 4rpx; }
+.wl-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  margin-right: 18rpx;
+}
+.wl-price { font-size: 30rpx; font-weight: 600; }
+.wl-chg { font-size: 22rpx; margin-top: 4rpx; }
+.wl-del { padding: 12rpx 4rpx 12rpx 12rpx; }
+
+.footer-tip {
+  padding: 10rpx 40rpx 40rpx;
+  font-size: 20rpx;
+  color: var(--text-dim);
+  line-height: 1.8;
+  text-align: center;
+}

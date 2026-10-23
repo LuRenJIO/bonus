@@ -219,26 +219,54 @@ Page({
         ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(padL + plotW, y); ctx.stroke();
         ctx.fillText((hi - ((hi - lo) * g) / 3).toFixed(0), padL + plotW + 5, y + 3);
       }
-      // 金色折线 + 面积
-      ctx.beginPath();
-      xs.forEach((x, i) => { if (i === 0) ctx.moveTo(x, ys[i]); else ctx.lineTo(x, ys[i]); });
-      ctx.strokeStyle = '#e8b95f';
-      ctx.lineWidth = 1.5;
-      ctx.stroke();
+      // 金色折线 + 面积（分时按交易时段分段绘制——休市边界断线，不跨段连线）
       const grad = ctx.createLinearGradient(0, padT, 0, padT + plotH);
       grad.addColorStop(0, 'rgba(232, 185, 95, 0.22)');
       grad.addColorStop(1, 'rgba(0,0,0,0)');
-      ctx.lineTo(xs[n - 1], padT + plotH);
-      ctx.lineTo(xs[0], padT + plotH);
-      ctx.closePath();
-      ctx.fillStyle = grad;
-      ctx.fill();
+      const drawSeg = (from, to) => {
+        ctx.beginPath();
+        for (let i = from; i <= to; i++) {
+          if (i === from) ctx.moveTo(xs[i], ys[i]);
+          else ctx.lineTo(xs[i], ys[i]);
+        }
+        ctx.strokeStyle = '#e8b95f';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+        ctx.lineTo(xs[to], padT + plotH);
+        ctx.lineTo(xs[from], padT + plotH);
+        ctx.closePath();
+        ctx.fillStyle = grad;
+        ctx.fill();
+      };
+      if (minute) {
+        let start = 0;
+        for (let i = 1; i <= n; i++) {
+          if (i === n || slots[i] - slots[i - 1] > 1.5) {
+            drawSeg(start, i - 1);
+            start = i;
+          }
+        }
+        // 休市折叠边界：竖向虚线标记（夜盘~日盘、午休）
+        ctx.setLineDash([3, 5]);
+        ctx.strokeStyle = 'rgba(230, 237, 243, 0.14)';
+        ctx.lineWidth = 1;
+        for (let i = 1; i < n; i++) {
+          if (slots[i] - slots[i - 1] > 1.5) {
+            const bx = (xs[i] + xs[i - 1]) / 2;
+            ctx.beginPath(); ctx.moveTo(bx, padT); ctx.lineTo(bx, padT + plotH); ctx.stroke();
+          }
+        }
+        ctx.setLineDash([]);
+      } else {
+        drawSeg(0, n - 1);
+      }
       // x 轴标签
       ctx.fillStyle = '#59626d';
       if (minute) {
-        // 固定交易时段刻度：夜盘凌晨 / 日盘开盘 / 收盘
+        // 固定交易时段刻度：夜盘凌晨 / 日盘开盘 / 午盘收盘前 / 收盘
         ctx.textAlign = 'left'; ctx.fillText('00:00', padL, H - 5);
         ctx.textAlign = 'center'; ctx.fillText('09:00', padL + (plotW * 151) / GOLD_TOTAL_SLOTS, H - 5);
+        ctx.fillText('11:30', padL + (plotW * 301) / GOLD_TOTAL_SLOTS, H - 5);
         ctx.textAlign = 'right'; ctx.fillText('15:00', padL + plotW, H - 5);
       } else {
         for (let g = 0; g < 5; g++) {

@@ -23,10 +23,12 @@
     <!-- 拾息红利 -->
     <view class="mod mod-stock" hover-class="press" bindtap="goStrategy">
       <view class="deco deco-stock">
-        <view class="kbar k4"></view>
-        <view class="kbar k3"></view>
-        <view class="kbar k2"></view>
-        <view class="kbar k1"></view>
+        <view class="kgroup">
+          <view class="kline kl1"><view class="kwire"></view><view class="kbody kb-up"></view></view>
+          <view class="kline kl2"><view class="kwire"></view><view class="kbody kb-dn"></view></view>
+          <view class="kline kl3"><view class="kwire"></view><view class="kbody kb-up"></view></view>
+          <view class="kline kl4"><view class="kwire"></view><view class="kbody kb-up"></view></view>
+        </view>
       </view>
       <view class="mod-row">
         <view class="mod-ic stock-ic-solid"><ui-icon name="chart" size="44" color="#0a0d12" /></view>
@@ -46,8 +48,11 @@
     <!-- 拾金观察 -->
     <view class="mod mod-gold" hover-class="press" bindtap="goGold">
       <view class="deco deco-gold">
-        <view class="coin c2"></view>
-        <view class="coin c1"><text class="coin-y">¥</text></view>
+        <view class="ingot ig3"></view>
+        <view class="ingot ig2"></view>
+        <view class="ingot ig1"></view>
+        <view class="spark s1"></view>
+        <view class="spark s2"></view>
       </view>
       <view class="mod-row">
         <view class="mod-ic gold-ic-solid"><ui-icon name="gold" size="44" color="#1a1206" /></view>
@@ -63,14 +68,19 @@
       </view>
     </view>
 
-    <view class="pt-label">扩展模块</view>
-    <view class="mod mod-soon">
+    <!-- 我的关注 -->
+    <view class="mod mod-watch" hover-class="press" bindtap="goWatchlist">
       <view class="mod-row">
-        <view class="mod-ic soon-ic"><ui-icon name="plus" size="34" color="#55606c" /></view>
+        <view class="mod-ic watch-ic-solid"><ui-icon name="star" size="44" color="#1a1206" /></view>
         <view class="mod-info">
-          <view class="mod-name soon-name">可转债 · REITs · 美股红利</view>
-          <view class="mod-desc">新策略模块预留槽位，敬请期待</view>
+          <view class="mod-name">我的关注</view>
+          <view class="mod-desc">各模块自选集中呈现 · 行情一眼看全</view>
         </view>
+        <view class="mod-arr">›</view>
+      </view>
+      <view class="mod-foot" wx:if="{{watchCount > 0 || goldSummary}}">
+        <text class="mchip g" wx:if="{{watchCount > 0}}">自选 {{watchCount}} 只</text>
+        <text class="mchip g" wx:if="{{goldSummary}}">上海金 {{goldSummary.price}} 元/克</text>
       </view>
     </view>
 

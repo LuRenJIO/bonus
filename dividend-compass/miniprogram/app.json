@@ -10,7 +10,8 @@
     "pages/report/report",
     "pages/reinvest/reinvest",
     "pages/taxcalc/taxcalc",
-    "pages/gold/gold"
+    "pages/gold/gold",
+    "pages/watchlist/watchlist"
   ],
   "window": {
     "navigationBarBackgroundColor": "#0e1116",

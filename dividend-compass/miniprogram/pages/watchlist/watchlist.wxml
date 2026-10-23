@@ -1,0 +1,85 @@
+<!--watchlist.wxml 我的关注：各模块自选集中呈现-->
+<view class="page">
+
+  <!-- 模块归属条 -->
+  <view class="module-tag watch-tag">
+    <view class="mt-ic"><ui-icon name="star" size="26" /></view>
+    <text class="mt-name">我的关注</text>
+    <text class="mt-cur">工作台</text>
+  </view>
+
+  <view wx:if="{{loading}}" class="wl-skeleton">
+    <view class="skeleton sk-row"></view>
+    <view class="skeleton sk-row"></view>
+    <view class="skeleton sk-row"></view>
+  </view>
+
+  <view wx:elif="{{error}}" class="empty-box">
+    <view>{{error}}</view>
+    <view class="wl-retry" bindtap="load">重试</view>
+  </view>
+
+  <block wx:else>
+    <!-- 贵金属现货（拾金观察固定关注） -->
+    <view class="card" wx:if="{{spotRows}}">
+      <view class="card-title"><text>贵金属现货</text><text class="sub">拾金观察</text></view>
+      <view class="wl-spot-row" wx:for="{{spotRows}}" wx:key="name">
+        <text class="wsp-name">{{item.name}}</text>
+        <view class="wsp-right">
+          <text class="wsp-val num">{{item.valText}}</text>
+          <text class="wsp-unit">{{item.unit}}</text>
+          <text class="wsp-chg num {{item.chgCls}}">{{item.chgText}}</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 股票自选 -->
+    <view class="card">
+      <view class="card-title"><text>股票自选</text><text class="sub">{{stocks.length ? stocks.length + ' 只' : ''}}</text></view>
+      <view wx:if="{{!stocks.length}}" class="empty-box">暂无自选股票 · 在详情页可添加</view>
+      <view class="wl-row" wx:for="{{stocks}}" wx:key="code"
+            data-code="{{item.code}}" data-name="{{item.name}}" bindtap="goStock" hover-class="press">
+        <view class="wl-left">
+          <view class="wl-name">{{item.name}}</view>
+          <view class="wl-code num">{{item.market}} {{item.code}}</view>
+        </view>
+        <view class="wl-right">
+          <view class="wl-price num">{{item.price || '--'}}</view>
+          <view class="wl-chg num {{item.changePercent > 0 ? 'up' : item.changePercent < 0 ? 'down' : 'flat'}}">
+            {{item.changePercent == null ? '--' : (item.changePercent > 0 ? '+' : '') + item.changePercent + '%'}}
+          </view>
+        </view>
+        <view class="wl-del" data-code="{{item.code}}" data-name="{{item.name}}" catchtap="goRemove">
+          <ui-icon name="close" size="26" color="#59626d" />
+        </view>
+      </view>
+    </view>
+
+    <!-- ETF/基金自选 -->
+    <view class="card" wx:if="{{etfs.length}}">
+      <view class="card-title"><text>ETF / 基金自选</text><text class="sub">{{etfs.length}} 只</text></view>
+      <view class="wl-row" wx:for="{{etfs}}" wx:key="code"
+            data-code="{{item.code}}" data-name="{{item.name}}" bindtap="goStock" hover-class="press">
+        <view class="wl-left">
+          <view class="wl-name">{{item.name}}</view>
+          <view class="wl-code num">{{item.market}} {{item.code}}</view>
+        </view>
+        <view class="wl-right">
+          <view class="wl-price num">{{item.price || '--'}}</view>
+          <view class="wl-chg num {{item.changePercent > 0 ? 'up' : item.changePercent < 0 ? 'down' : 'flat'}}">
+            {{item.changePercent == null ? '--' : (item.changePercent > 0 ? '+' : '') + item.changePercent + '%'}}
+          </view>
+        </view>
+        <view class="wl-del" data-code="{{item.code}}" data-name="{{item.name}}" catchtap="goRemove">
+          <ui-icon name="close" size="26" color="#59626d" />
+        </view>
+      </view>
+    </view>
+
+    <view class="footer-tip">
+      <view>这里集中呈现你在各模块添加的自选内容 · 长按行情数据以最新一次刷新为准</view>
+    </view>
+  </block>
+
+  <module-switcher current="watch" />
+</view>
