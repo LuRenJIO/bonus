@@ -728,7 +728,31 @@ async function getGoldSpot() {
   return (out.shanghai || out.xau) ? out : null;
 }
 
-/** 黄金当日分时（新浪期货 AU0 1分钟K，取最新交易日的分钟点 [{t:'HH:MM', price}]） */
+/**
+ * 黄金分时（新浪期货 AU0 1分钟K）：完整交易日窗口（前夜 21:00 夜盘起 ~ 今日 15:00 收盘 ~ 今晚新夜盘）
+ * 每点附带 slot（连续交易时段槽位，闭市时段剔除）与 seg（交易时段段号，用于分段绘制）
+ * 槽位表：昨夜21:00~23:59→0~179 ｜ 今晨00:00~02:30→180~330 ｜ 09:00~10:15→331~406
+ *         10:30~11:30→407~467 ｜ 13:30~15:00→468~568 ｜ 今晚21:00~23:59→569~748；总槽 748
+ */
+function goldMinSlot(d, lastDate, prevDate) {
+  const date = d.slice(0, 10);
+  const hh = parseInt(d.slice(11, 13), 10) || 0;
+  const mm = parseInt(d.slice(14, 16), 10) || 0;
+  const m = hh * 60 + mm;
+  if (date === prevDate) {
+    if (m >= 1260) return { slot: m - 1260, seg: 1 };          // 昨夜 21:00~23:59（夜盘前半）
+    return null;
+  }
+  if (date === lastDate) {
+    if (m <= 150) return { slot: m + 180, seg: 1 };            // 今晨 00:00~02:30（夜盘后半，与昨夜连续）
+    if (m >= 540 && m <= 615) return { slot: m - 540 + 331, seg: 2 };   // 09:00~10:15
+    if (m >= 630 && m <= 690) return { slot: m - 630 + 407, seg: 3 };   // 10:30~11:30
+    if (m >= 810 && m <= 900) return { slot: m - 810 + 468, seg: 4 };   // 13:30~15:00
+    if (m >= 1260) return { slot: m - 1260 + 569, seg: 5 };    // 今晚 21:00~23:59（下一交易日夜盘）
+  }
+  return null;
+}
+
 async function getGoldMinute() {
   const url = 'https://stock2.finance.sina.com.cn/futures/api/jsonp.php/var%20t=/InnerFuturesNewService.getFewMinLine?symbol=AU0&type=1';
   const text = await httpGet(url, { headers: { Referer: 'https://finance.sina.com.cn/' }, timeout: 8000 });
@@ -736,9 +760,16 @@ async function getGoldMinute() {
   const arr = m ? JSON.parse(m[1]) : [];
   if (!arr.length) return null;
   const lastDate = arr[arr.length - 1].d.slice(0, 10);
-  const points = arr.filter((r) => r.d.slice(0, 10) === lastDate)
-    .map((r) => ({ t: r.d.slice(11, 16), price: parseFloat(r.c) }))
-    .filter((x) => /^\d{2}:\d{2}$/.test(x.t) && isFinite(x.price) && x.price > 0);
+  const prev = new Date(new Date(lastDate + 'T00:00:00').getTime() - 86400000);
+  const prevDate = prev.getFullYear() + '-' +
+    String(prev.getMonth() + 1).padStart(2, '0') + '-' + String(prev.getDate()).padStart(2, '0');
+  const points = arr.map((r) => {
+    const slotInfo = goldMinSlot(r.d, lastDate, prevDate);
+    if (!slotInfo) return null;
+    const price = parseFloat(r.c);
+    if (!/^\d{2}:\d{2}$/.test(r.d.slice(11, 16)) || !isFinite(price) || price <= 0) return null;
+    return { t: r.d.slice(11, 16), price, slot: slotInfo.slot, seg: slotInfo.seg };
+  }).filter(Boolean);
   return points.length >= 10 ? { date: lastDate, points } : null;
 }
 

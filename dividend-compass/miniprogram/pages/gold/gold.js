@@ -8,25 +8,8 @@ const ETF_NAMES = {
   '518800': '国泰黄金ETF',
 };
 
-/**
- * 黄金分时时间 → 完整交易日连续槽位（剔除全部闭市时段）：
- *   21:00~23:59（上一交易日夜盘）→ 0~179
- *   00:00~02:30（夜盘凌晨延续）→ 180~330
- *   09:00~10:15 / 10:30~11:30（日盘上午）→ 331~406 / 421~481
- *   13:30~15:00（日盘下午）→ 482~572；总槽 572
- * x 轴自前一夜盘开盘起至今日 15:00 收盘止；02:30~09:00 等闭市时段在轴上不存在
- */
-function goldSlot(t) {
-  const p = String(t || '').split(':');
-  const m = (parseInt(p[0], 10) || 0) * 60 + (parseInt(p[1], 10) || 0);
-  if (m >= 1260) return m - 1260;                    // 21:00~23:59
-  if (m <= 150) return m + 180;                      // 00:00~02:30
-  if (m >= 540 && m <= 615) return m - 540 + 331;    // 09:00~10:15
-  if (m >= 630 && m <= 690) return m - 630 + 421;    // 10:30~11:30
-  if (m >= 810 && m <= 900) return m - 810 + 482;    // 13:30~15:00
-  return 330;                                        // 闭市时段防御归界（正常数据不出现）
-}
-const GOLD_TOTAL_SLOTS = 572;
+// 分时槽位/段号由后端 getGoldMinute 计算（完整交易日 748 槽：前夜21:00~今日15:00~今晚21:00起，闭市时段剔除）
+const GOLD_TOTAL_SLOTS = 748;
 
 Page({
   data: {
@@ -201,11 +184,11 @@ Page({
       lo -= pad; hi += pad;
       this._gGeo = { padL, padT, plotW, plotH };
       const n = pts.length;
-      // 分时：x 轴固定覆盖全部交易时段（00:00~15:00，剔除闭市），未走到的时段留白
+      // 分时：x 轴固定覆盖完整交易日（前夜21:00~今晚23:59，闭市时段由后端剔除），未走到的时段留白
       let slots = null;
       let xs;
       if (minute) {
-        slots = pts.map((p) => goldSlot(p.t));
+        slots = pts.map((p) => p.slot);
         this._gSlots = slots;
         xs = slots.map((s) => padL + (plotW * s) / GOLD_TOTAL_SLOTS);
       } else {
@@ -245,8 +228,14 @@ Page({
         ctx.fill();
       };
       if (minute) {
-        // 连续绘制（闭市时段已在槽位中剔除，不存在跨休市连线）
-        drawSeg(0, n - 1);
+        // 按 6 个交易时段分段绘制：闭市时段已从轴上剔除，段间不连线（面积各段独立闭合）
+        let start = 0;
+        for (let i = 1; i <= n; i++) {
+          if (i === n || pts[i].seg !== pts[i - 1].seg) {
+            drawSeg(start, i - 1);
+            start = i;
+          }
+        }
         // 日盘开盘标记：09:00 处竖向虚线（夜盘/凌晨 与 日盘 的折叠边界）
         ctx.setLineDash([3, 5]);
         ctx.strokeStyle = 'rgba(230, 237, 243, 0.14)';
@@ -260,11 +249,12 @@ Page({
       // x 轴标签
       ctx.fillStyle = '#59626d';
       if (minute) {
-        // 完整交易日刻度：前日夜盘开盘 / 零点 / 日盘开盘 / 收盘
+        // 完整交易日刻度：前日夜盘开盘 / 零点 / 日盘开盘 / 午盘开始 / 收盘
         ctx.textAlign = 'left'; ctx.fillText('21:00', padL, H - 5);
         ctx.fillText('00:00', padL + (plotW * 180) / GOLD_TOTAL_SLOTS, H - 5);
         ctx.fillText('09:00', padL + (plotW * 331) / GOLD_TOTAL_SLOTS, H - 5);
-        ctx.textAlign = 'right'; ctx.fillText('15:00', padL + plotW, H - 5);
+        ctx.fillText('13:30', padL + (plotW * 468) / GOLD_TOTAL_SLOTS, H - 5);
+        ctx.textAlign = 'right'; ctx.fillText('15:00', padL + (plotW * 568) / GOLD_TOTAL_SLOTS, H - 5);
       } else {
         for (let g = 0; g < 5; g++) {
           const idx = Math.round((n - 1) * g / 4);
