@@ -8,6 +8,20 @@ const ETF_NAMES = {
   '518800': '国泰黄金ETF',
 };
 
+/**
+ * 黄金分时时间 → 交易时段连续槽位（剔除闭市时段）：
+ *   00:00~02:30（夜盘凌晨）→ 0~150；09:00~15:00（日盘）→ 151~511；总槽 511
+ * x 轴固定覆盖全部交易时段，未走到的时段留白
+ */
+function goldSlot(t) {
+  const p = String(t || '').split(':');
+  const m = (parseInt(p[0], 10) || 0) * 60 + (parseInt(p[1], 10) || 0);
+  if (m <= 150) return m;
+  if (m >= 540) return m - 540 + 151;
+  return 150;   // 闭市时段（02:30~09:00）归界，正常数据不出现
+}
+const GOLD_TOTAL_SLOTS = 511;
+
 Page({
   data: {
     loading: true,
@@ -141,7 +155,15 @@ Page({
     if (!pts || pts.length < 2) return;
     const t = e.touches && e.touches[0];
     if (!t) return;
-    const idx = Math.max(0, Math.min(pts.length - 1, Math.round(((t.x - geo.padL) / geo.plotW) * (pts.length - 1))));
+    let idx;
+    if (this.data.goldMode === 'minute') {
+      // 分时：触摸位置 → 交易时段槽位 → 二分最近分钟点
+      const slot = Math.round(((t.x - geo.padL) / geo.plotW) * GOLD_TOTAL_SLOTS);
+      idx = util.nearestIndexBySlot(this._gSlots || [], slot);
+    } else {
+      idx = Math.round(((t.x - geo.padL) / geo.plotW) * (pts.length - 1));
+    }
+    idx = Math.max(0, Math.min(pts.length - 1, idx));
     if (this._gCrossIdx === idx) return;
     this._gCrossIdx = idx;
     this.drawGold();
@@ -173,8 +195,19 @@ Page({
       lo -= pad; hi += pad;
       this._gGeo = { padL, padT, plotW, plotH };
       const n = pts.length;
-      const xs = pts.map((_, i) => padL + (plotW * i) / (n - 1));
+      // 分时：x 轴固定覆盖全部交易时段（00:00~15:00，剔除闭市），未走到的时段留白
+      let slots = null;
+      let xs;
+      if (minute) {
+        slots = pts.map((p) => goldSlot(p.t));
+        this._gSlots = slots;
+        xs = slots.map((s) => padL + (plotW * s) / GOLD_TOTAL_SLOTS);
+      } else {
+        xs = pts.map((_, i) => padL + (plotW * i) / (n - 1));
+      }
       const ys = prices.map((p) => padT + plotH * (1 - (p - lo) / (hi - lo)));
+      // 每帧清屏（无清屏则触摸重绘全部叠加——十字/网格残留）
+      ctx.clearRect(0, 0, W, H);
       // 网格 + 右侧价签
       ctx.strokeStyle = 'rgba(148, 163, 184, 0.12)';
       ctx.lineWidth = 1;
@@ -203,9 +236,10 @@ Page({
       // x 轴标签
       ctx.fillStyle = '#59626d';
       if (minute) {
-        ctx.textAlign = 'left'; ctx.fillText(pts[0].t, padL, H - 5);
-        ctx.textAlign = 'center'; ctx.fillText(pts[Math.floor((n - 1) / 2)].t, padL + plotW / 2, H - 5);
-        ctx.textAlign = 'right'; ctx.fillText(pts[n - 1].t, padL + plotW, H - 5);
+        // 固定交易时段刻度：夜盘凌晨 / 日盘开盘 / 收盘
+        ctx.textAlign = 'left'; ctx.fillText('00:00', padL, H - 5);
+        ctx.textAlign = 'center'; ctx.fillText('09:00', padL + (plotW * 151) / GOLD_TOTAL_SLOTS, H - 5);
+        ctx.textAlign = 'right'; ctx.fillText('15:00', padL + plotW, H - 5);
       } else {
         for (let g = 0; g < 5; g++) {
           const idx = Math.round((n - 1) * g / 4);
@@ -213,10 +247,14 @@ Page({
           ctx.fillText(pts[idx].d.slice(2, 7).replace('-', '/'), xs[idx], H - 5);
         }
       }
-      // 十字光标
+      // 十字光标（分时按槽位定位，日K按点序线性定位）
       if (this._gCrossIdx !== undefined && this._gCrossIdx !== null) {
         const i = Math.min(this._gCrossIdx, n - 1);
-        const cx = xs[i], cy = ys[i];
+        const frac = minute
+          ? (slots && slots[i] !== undefined ? slots[i] / GOLD_TOTAL_SLOTS : i / (n - 1))
+          : i / (n - 1);
+        const cx = padL + plotW * frac;
+        const cy = ys[i];
         ctx.setLineDash([3, 4]);
         ctx.strokeStyle = 'rgba(230, 237, 243, 0.55)';
         ctx.beginPath(); ctx.moveTo(cx, padT); ctx.lineTo(cx, padT + plotH); ctx.stroke();
