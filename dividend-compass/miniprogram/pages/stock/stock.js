@@ -16,6 +16,7 @@ Page({
     predMode: 'basic',  // basic=多模型区间 | enhanced=盈利修正
     isFav: false,
     favBusy: false,
+    isEtf: false,       // 场内基金（ETF/LOF）：详情页隐藏红利卡组
     alertOn: false,       // 已设股息率提醒
     alertThreshold: null, // 提醒阈值（%）
     priceMode: 'minute',  // 价格走势：minute=分时 | daily=日K
@@ -31,11 +32,12 @@ Page({
       code: options.code || '',
       name: decodeURIComponent(options.name || ''),
       market: options.market || '',
+      isEtf: /^(51|56|58|15|16)/.test(options.code || ''),   // 场内基金：详情页隐藏红利卡组
     });
     if (this.data.name) wx.setNavigationBarTitle({ title: this.data.name });
     this.loadOverview();
     this.checkFav();
-    this.loadAlert();
+    if (!this.data.isEtf) this.loadAlert();
   },
 
   onPullDownRefresh() {

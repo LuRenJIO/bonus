@@ -382,6 +382,10 @@
 .ir-top-name { color: var(--text-main); }
 .ir-top-yld { font-weight: 600; }
 
+/* ================= 黄金ETF 专属说明 ================= */
+.etf-edu { display: flex; flex-direction: column; gap: 4rpx; }
+.etf-row { font-size: 23rpx; color: var(--text-sub); line-height: 1.8; }
+
 /* ================= 分红涨薪史 ================= */
 .growth-badge {
   font-size: 20rpx;

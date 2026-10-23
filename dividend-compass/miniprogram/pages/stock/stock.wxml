@@ -75,8 +75,19 @@
       </block>
     </view>
 
-    <!-- ============ 股息率核心卡 ============ -->
-    <view class="card yield-card">
+    <!-- ============ 黄金ETF 专属说明（ETF 详情页替换红利卡组） ============ -->
+    <view class="card card-accent" wx:if="{{isEtf}}">
+      <view class="card-title"><text>关于黄金ETF</text><text class="sub">跟踪金价 · 配置工具</text></view>
+      <view class="etf-edu">
+        <view class="etf-row">· 紧密跟踪国内金价（上海金 Au99.99），场内价格与金价偏离极小</view>
+        <view class="etf-row">· 支持 <text class="gold-text">T+0 回转交易</text>，当天买卖灵活；交易免印花税</view>
+        <view class="etf-row">· 黄金不派息——<text class="gold-text">没有股息与分红</text>，收益完全来自金价波动</view>
+        <view class="etf-row">· 常见做法：作为组合 5%~10% 的对冲配置，而非博取短期价差</view>
+      </view>
+    </view>
+
+    <!-- ============ 股息率核心卡（ETF 无股息，隐藏） ============ -->
+    <view class="card yield-card" wx:if="{{!isEtf}}">
       <view class="card-title">
         <text>股息率（TTM口径）</text>
         <view class="yt-right">
@@ -120,7 +131,7 @@
     </view>
 
     <!-- ============ 预测卡 ============ -->
-    <view class="card pred-card" wx:if="{{d.prediction.hasEnoughData}}">
+    <view class="card pred-card" wx:if="{{!isEtf && d.prediction.hasEnoughData}}">
       <view class="card-title">
         <text>{{d.prediction.nextPeriod}}预期分红</text>
         <view class="pred-tabs">
@@ -255,7 +266,7 @@
     </view>
 
     <!-- ============ 股息率曲线 ============ -->
-    <view class="card" wx:if="{{d.yieldCurve && d.yieldCurve.points.length >= 2}}">
+    <view class="card" wx:if="{{!isEtf && d.yieldCurve && d.yieldCurve.points.length >= 2}}">
       <view class="card-title">
         <text>股息率曲线</text>
         <text class="sub">月末TTM股息率 · 近5年</text>
@@ -276,7 +287,7 @@
     </view>
 
     <!-- ============ 行业股息率对比 ============ -->
-    <view class="card" wx:if="{{d.industryRank}}">
+    <view class="card" wx:if="{{!isEtf && d.industryRank}}">
       <view class="card-title">
         <text>行业股息率对比</text>
         <text class="sub">{{d.industryRank.board}}</text>
@@ -322,7 +333,7 @@
     </view>
 
     <!-- ============ 分红涨薪史 ============ -->
-    <view class="card" wx:if="{{growth}}">
+    <view class="card" wx:if="{{!isEtf && growth}}">
       <view class="card-title">
         <text>分红涨薪史</text>
         <text class="growth-badge" wx:if="{{growth.badge}}">{{growth.badge}}</text>
@@ -339,7 +350,7 @@
     </view>
 
     <!-- ============ 分红历史 ============ -->
-    <view class="card" wx:if="{{d.dividend.annual.length}}">
+    <view class="card" wx:if="{{!isEtf && d.dividend.annual.length}}">
       <view class="card-title">
         <text>历年分红</text>
         <text class="sub link-gold" bindtap="goReinvest">再投模拟 ›</text>
@@ -361,7 +372,7 @@
     </view>
 
     <!-- ============ 财务表现 ============ -->
-    <view class="card" wx:if="{{d.finance.latest}}">
+    <view class="card" wx:if="{{!isEtf && d.finance.latest}}">
       <view class="card-title">
         <text>财务表现</text>
         <text class="sub">来源：定期报告（东财F10）</text>
@@ -430,7 +441,7 @@
     </view>
 
     <!-- ============ 分红可持续性体检 ============ -->
-    <view class="card card-accent health-card" wx:if="{{d.health}}">
+    <view class="card card-accent health-card" wx:if="{{!isEtf && d.health}}">
       <view class="card-title">
         <text>分红可持续性体检</text>
         <text class="sub">6维度评估</text>
@@ -456,7 +467,8 @@
 
     <!-- 页脚 -->
     <view class="footer-tip">
-      <view>数据来源：东方财富 · 腾讯财经｜分红为税前口径</view>
+      <view wx:if="{{!isEtf}}">数据来源：东方财富 · 腾讯财经｜分红为税前口径</view>
+      <view wx:else>数据来源：东方财富 · 腾讯财经｜黄金ETF行情与金价数据</view>
       <view>本工具仅供研究参考，不构成投资建议</view>
     </view>
 
