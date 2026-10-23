@@ -63,7 +63,7 @@
         <text class="sc-yld">股息率</text>
         <text class="sc-meta">价格 / PE / PB</text>
       </view>
-      <view class="scr-row" wx:for="{{rows}}" wx:key="code"
+      <view class="scr-row" wx:for="{{rows}}" wx:key="code" hover-class="press"
             data-code="{{item.code}}" data-name="{{item.name}}" bindtap="goStock">
         <view class="sc-left">
           <view class="sc-name-line"><text class="sc-stock">{{item.name}}</text><text class="sc-code num">{{item.code}}</text></view>

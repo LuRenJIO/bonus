@@ -1,0 +1,5 @@
+<!--components/ui-icon/ui-icon.wxml-->
+<view
+  class="ui-icon ic-{{name}}"
+  style="width: {{size}}rpx; height: {{size}}rpx; {{color ? 'background:' + color : ''}}"
+></view>

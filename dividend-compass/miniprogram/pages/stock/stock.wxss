@@ -75,7 +75,8 @@
 .yield-big {
   font-size: 64rpx;
   font-weight: 700;
-  color: var(--gold);
+  color: var(--gold-hi);
+  text-shadow: var(--gold-glow);
   line-height: 1.1;
 }
 

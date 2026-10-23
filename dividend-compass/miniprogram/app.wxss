@@ -1,4 +1,7 @@
-/**app.wxss —— 全局样式：券商专业风（深色底 / 红涨绿跌 / 高数据密度）**/
+/**app.wxss —— 全局样式：券商专业风（深色底 / 红涨绿跌 / 高数据密度）
+ * v2 深色金融质感升级：金渐变体系 / 卡片两级 / 字号阶梯 / 按压反馈 / 骨架屏
+ * 动效仅 transform/opacity（GPU 合成），零图片零字体资源
+ */
 
 page {
   --bg: #0e1116;            /* 页面背景 */
@@ -17,6 +20,17 @@ page {
   --gold-bg: rgba(212, 169, 78, 0.12);
   --blue: #4c8dff;
 
+  /* —— v2 金色体系 —— */
+  --gold-hi: #f0d08a;       /* 亮金（数字/图标高光） */
+  --gold-deep: #9a7420;     /* 深金 */
+  --gold-grad: linear-gradient(135deg, #f0d08a, #d4a94e);
+  --gold-glow: 0 0 18rpx rgba(212, 169, 78, 0.25);
+  --card-grad: linear-gradient(180deg, #1a2029, #161b22);
+
+  /* —— v2 圆角节奏 —— */
+  --radius-lg: 20rpx;
+  --radius-md: 12rpx;
+
   background: var(--bg);
   color: var(--text);
   font-size: 28rpx;
@@ -24,12 +38,30 @@ page {
     'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
 }
 
-/* ---------- 通用卡片 ---------- */
+/* ---------- 通用卡片（v2：渐变底 + 描边 + 柔和投影） ---------- */
 .card {
-  background: var(--card);
-  border-radius: 16rpx;
+  background: var(--card-grad);
+  border: 1rpx solid var(--border);
+  border-radius: var(--radius-lg, 20rpx);
   padding: 24rpx;
   margin: 20rpx 24rpx;
+  box-shadow: 0 8rpx 24rpx rgba(0, 0, 0, 0.35);
+}
+
+/* 强调卡：金色左竖条（体检/汇总/横幅类） */
+.card-accent {
+  position: relative;
+  overflow: hidden;
+}
+.card-accent::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 16rpx;
+  bottom: 16rpx;
+  width: 6rpx;
+  border-radius: 0 6rpx 6rpx 0;
+  background: var(--gold-grad);
 }
 
 .card-title {
@@ -39,6 +71,23 @@ page {
   font-size: 30rpx;
   font-weight: 600;
   margin-bottom: 20rpx;
+}
+
+/* 标题金色锚点竖条（所有 card-title 自动获得） */
+.card-title > text:first-child {
+  position: relative;
+  padding-left: 20rpx;
+}
+.card-title > text:first-child::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 6rpx;
+  height: 26rpx;
+  border-radius: 3rpx;
+  background: var(--gold-grad);
 }
 
 .card-title .sub {
@@ -56,6 +105,69 @@ page {
 .num {
   font-family: 'DIN Alternate', 'Menlo', monospace;
   font-variant-numeric: tabular-nums;
+}
+
+/* ---------- v2 字号阶梯（金融大数字） ---------- */
+.t-hero {
+  font-size: 52rpx;
+  font-weight: 700;
+  letter-spacing: -0.5rpx;
+}
+.t-big {
+  font-size: 36rpx;
+  font-weight: 700;
+}
+.num-strong {
+  font-family: 'DIN Alternate', 'Menlo', monospace;
+  font-variant-numeric: tabular-nums;
+  font-size: 32rpx;
+  font-weight: 700;
+}
+.gold-glow {
+  color: var(--gold-hi);
+  text-shadow: var(--gold-glow);
+}
+
+/* ---------- v2 按压反馈（配合 hover-class="press"） ---------- */
+.press {
+  transform: scale(0.985);
+  background: var(--card-hover);
+  opacity: 0.92;
+}
+.press-in {
+  transform: scale(0.97);
+  opacity: 0.88;
+}
+view.hover-enable, .fav-item, .pf-row, .sug-item, .ge-row, .rp-row, .cal-row, .scr-row, .q-item, .recent-chip {
+  transition: transform 0.12s ease, background-color 0.12s ease, opacity 0.12s ease;
+}
+
+/* ---------- v2 骨架屏（shimmer） ---------- */
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background: var(--card-hover);
+  border-radius: var(--radius-md, 12rpx);
+}
+.skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(230, 237, 243, 0.06), transparent);
+  animation: sk-shimmer 1.4s ease-in-out infinite;
+}
+@keyframes sk-shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+/* ---------- v2 金渐变主按钮 ---------- */
+.btn-gold {
+  background: var(--gold-grad);
+  color: #1a1d24;
+  font-weight: 600;
+  border-radius: 999rpx;
+  box-shadow: 0 6rpx 18rpx rgba(212, 169, 78, 0.3);
 }
 
 /* ---------- 标签 ---------- */

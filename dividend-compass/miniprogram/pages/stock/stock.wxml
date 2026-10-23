@@ -87,7 +87,7 @@
       </view>
       <view class="yield-main">
         <view class="yield-left">
-          <view class="yield-big num">{{d.dividend.ttm.yield === null ? '--' : d.dividend.ttm.yield + '%'}}</view>
+          <view class="yield-big num t-hero gold-glow">{{d.dividend.ttm.yield === null ? '--' : d.dividend.ttm.yield + '%'}}</view>
           <view class="yield-sub">TTM每股分红 {{fmt.fmtNum(d.dividend.ttm.perShare, 4)}} 元</view>
         </view>
         <view class="yield-right" wx:if="{{d.dividend.annual.length}}">
@@ -431,7 +431,7 @@
     </view>
 
     <!-- ============ 分红可持续性体检 ============ -->
-    <view class="card health-card" wx:if="{{d.health}}">
+    <view class="card card-accent health-card" wx:if="{{d.health}}">
       <view class="card-title">
         <text>分红可持续性体检</text>
         <text class="sub">6维度评估</text>

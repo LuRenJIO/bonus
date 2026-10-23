@@ -34,7 +34,7 @@
     <!-- 个股明细 -->
     <view class="card">
       <view class="card-title"><text>个股收息明细</text></view>
-      <view class="rp-row" wx:for="{{r.stocks}}" wx:key="code"
+      <view class="rp-row" wx:for="{{r.stocks}}" wx:key="code" hover-class="press"
             data-code="{{item.code}}" data-name="{{item.name}}" bindtap="goStock">
         <text class="rp-name">{{item.name}}</text>
         <text class="rp-amt num">{{item.amount}} 元</text>
@@ -56,7 +56,7 @@
     <!-- 分享图 -->
     <view class="card">
       <view class="card-title"><text>收息人分享卡</text></view>
-      <view class="share-btn" bindtap="onSaveCard">{{saving ? '生成中…' : '生成并分享收息卡'}}</view>
+      <view class="share-btn btn-gold" hover-class="press-in" bindtap="onSaveCard">{{saving ? '生成中…' : '生成并分享收息卡'}}</view>
       <view class="cv-note">生成带月份分布的分享图，可发送好友或保存相册，晒出你的收息成绩</view>
       <!-- 离屏绘制画布 -->
       <canvas type="2d" id="reportCanvas" class="rp-canvas"></canvas>

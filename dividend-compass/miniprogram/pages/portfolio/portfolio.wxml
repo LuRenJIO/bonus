@@ -14,7 +14,7 @@
     <view class="pf-hero card">
       <view class="pf-hero-title">收息记账本</view>
       <view class="pf-hero-sub">录入持仓，自动统计今年已收分红、组合股息率与预期分红现金流</view>
-      <view class="pf-hero-btn" bindtap="onToggleForm">+ 添加第一笔持仓</view>
+      <view class="pf-hero-btn btn-gold" hover-class="press-in" bindtap="onToggleForm">+ 添加第一笔持仓</view>
     </view>
   </block>
 
@@ -24,7 +24,7 @@
     <view class="card pf-sum">
       <view class="pf-sum-main">
         <view class="pf-sum-label">今年已收分红（税前）</view>
-        <view class="pf-sum-num num">{{summary.yearReceived}}<text class="pf-unit">元</text></view>
+        <view class="pf-sum-num num t-big gold-glow">{{summary.yearReceived}}<text class="pf-unit">元</text></view>
         <view class="pf-sum-sub" wx:if="{{summary.expectedAnnual}}">按TTM口径预期全年分红 {{summary.expectedAnnual}} 元</view>
       </view>
       <view class="pf-sum-grid">
@@ -88,7 +88,7 @@
           <text class="pf-link" bindtap="onToggleForm">+ 添加</text>
         </view>
       </view>
-      <view class="pf-row" wx:for="{{holdings}}" wx:key="code"
+      <view class="pf-row" wx:for="{{holdings}}" wx:key="code" hover-class="press"
             data-code="{{item.code}}" data-name="{{item.name}}" data-market="{{item.market}}" bindtap="goStock">
         <view class="pf-left">
           <view class="pf-name">

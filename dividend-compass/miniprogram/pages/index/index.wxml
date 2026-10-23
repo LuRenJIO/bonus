@@ -3,7 +3,7 @@
 
   <!-- 搜索框 -->
   <view class="search-bar">
-    <view class="search-icon">🔍</view>
+    <view class="search-icon"><ui-icon name="search" size="34" /></view>
     <input
       class="search-input"
       placeholder="股票名称 / 拼音首字母 / 6位代码"
@@ -12,7 +12,7 @@
       confirm-type="search"
       bindinput="onSearchInput"
     />
-    <view wx:if="{{keyword}}" class="search-clear" bindtap="onClearSearch">✕</view>
+    <view wx:if="{{keyword}}" class="search-clear" bindtap="onClearSearch"><ui-icon name="close" size="28" color="#59626d" /></view>
   </view>
 
   <!-- 搜索建议 -->
@@ -48,6 +48,7 @@
         wx:key="label"
         data-idx="{{index}}"
         bindtap="onBriefTap"
+        hover-class="{{item.tap ? 'press' : ''}}"
       >
         <text class="brief-label">{{item.label}}</text>
         <text class="brief-val num {{item.cls}}">{{item.val}}</text>
@@ -68,8 +69,10 @@
     </view>
 
     <!-- 股息率提醒横幅（红点降级方案：无推送也可见） -->
-    <view class="alert-banner" wx:if="{{alertHits.length}}" bindtap="goAlertStock">
-      <text class="ab-text">🔔 {{alertHits.length}}只自选触及提醒线：{{alertHitsText}}</text>
+    <view class="alert-banner" wx:if="{{alertHits.length}}" bindtap="goAlertStock" hover-class="press">
+      <view class="ab-icon"><ui-icon name="bell" size="30" /></view>
+      <text class="ab-text">{{alertHits.length}}只自选触及提醒线：{{alertHitsText}}</text>
+      <view class="ab-arrow"><ui-icon name="arrow" size="24" /></view>
     </view>
 
     <!-- 今日除息弹层（与分红日历差异化：只看今天，快速直达） -->
@@ -92,24 +95,24 @@
 
     <!-- 快捷入口 -->
     <view class="quick-card card">
-      <view class="q-item" bindtap="goCalendar">
-        <text class="q-icon">📅</text>
+      <view class="q-item" hover-class="press-in" bindtap="goCalendar">
+        <view class="q-icon"><ui-icon name="calendar" size="40" /></view>
         <view class="q-text">
           <view class="q-title">分红日历</view>
           <view class="q-sub">除息 · 预案</view>
         </view>
       </view>
       <view class="q-divider"></view>
-      <view class="q-item" bindtap="goPortfolio">
-        <text class="q-icon">💰</text>
+      <view class="q-item" hover-class="press-in" bindtap="goPortfolio">
+        <view class="q-icon"><ui-icon name="coin" size="40" /></view>
         <view class="q-text">
           <view class="q-title">收息记账</view>
           <view class="q-sub">持仓 · 年报</view>
         </view>
       </view>
       <view class="q-divider"></view>
-      <view class="q-item" bindtap="goScreener">
-        <text class="q-icon">🔍</text>
+      <view class="q-item" hover-class="press-in" bindtap="goScreener">
+        <view class="q-icon"><ui-icon name="funnel" size="40" /></view>
         <view class="q-text">
           <view class="q-title">红利筛选</view>
           <view class="q-sub">股息率 · 利差</view>
@@ -124,7 +127,11 @@
         <text class="sub">{{favList.length ? favList.length + ' 只' : ''}}</text>
       </view>
 
-      <view wx:if="{{favLoading}}" class="loading-box">加载中…</view>
+      <view wx:if="{{favLoading}}" class="fav-skeleton">
+        <view class="sk-row"><view class="skeleton sk-name"></view><view class="skeleton sk-val"></view></view>
+        <view class="sk-row"><view class="skeleton sk-name"></view><view class="skeleton sk-val"></view></view>
+        <view class="sk-row"><view class="skeleton sk-name"></view><view class="skeleton sk-val"></view></view>
+      </view>
 
       <view wx:elif="{{favError}}" class="empty-box">
         <view>云端自选暂不可用</view>
@@ -145,7 +152,9 @@
           data-name="{{item.name}}"
           data-market="{{item.market}}"
           bindtap="goStock"
+          hover-class="press"
         >
+          <view class="fav-mark"></view>
           <view class="fav-left">
             <view class="fav-name">{{item.name}}</view>
             <view class="fav-code num">{{item.market}} {{item.code}}</view>
@@ -156,7 +165,7 @@
               {{item.changePercent == null ? '--' : (item.changePercent > 0 ? '+' : '') + item.changePercent + '%'}}
             </view>
           </view>
-          <view class="fav-del" data-code="{{item.code}}" catchtap="onRemoveFavorite">✕</view>
+          <view class="fav-del" data-code="{{item.code}}" catchtap="onRemoveFavorite"><ui-icon name="close" size="26" color="#59626d" /></view>
         </view>
       </block>
     </view>

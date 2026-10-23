@@ -1,5 +1,8 @@
 {
   "navigationBarTitleText": "拾息记",
   "enablePullDownRefresh": true,
-  "backgroundTextStyle": "dark"
+  "backgroundTextStyle": "dark",
+  "usingComponents": {
+    "ui-icon": "/components/ui-icon/ui-icon"
+  }
 }

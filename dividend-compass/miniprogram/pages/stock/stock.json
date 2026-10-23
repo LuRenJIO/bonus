@@ -1,5 +1,7 @@
 {
   "navigationBarTitleText": "股票详情",
-  "enablePullDownRefresh": true,
-  "backgroundTextStyle": "dark"
+  "backgroundColor": "#0e1116",
+  "usingComponents": {
+    "ui-icon": "/components/ui-icon/ui-icon"
+  }
 }
