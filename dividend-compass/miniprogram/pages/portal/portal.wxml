@@ -23,7 +23,8 @@
     <!-- 拾息红利 -->
     <view class="mod mod-stock" hover-class="press" bindtap="goStrategy">
       <view class="mod-glow stock-glow"></view>
-      <view class="mod-ring stock-ring"></view>
+      <view class="mod-orbit orbit-a stock-orbit"></view>
+      <view class="mod-orbit2 orbit-b stock-orbit2"></view>
       <view class="mod-dot stock-dot"></view>
       <view class="mod-row">
         <view class="mod-ic stock-ic-solid"><ui-icon name="chart" size="44" color="#0a0d12" /></view>
@@ -43,7 +44,8 @@
     <!-- 拾金观察 -->
     <view class="mod mod-gold" hover-class="press" bindtap="goGold">
       <view class="mod-glow gold-glow-bg"></view>
-      <view class="mod-ring gold-ring"></view>
+      <view class="mod-orbit orbit-a gold-orbit"></view>
+      <view class="mod-orbit2 orbit-b gold-orbit2"></view>
       <view class="mod-dot gold-dot"></view>
       <view class="mod-row">
         <view class="mod-ic gold-ic-solid"><ui-icon name="gold" size="44" color="#1a1206" /></view>
@@ -62,7 +64,8 @@
     <!-- 我的关注 -->
     <view class="mod mod-watch" hover-class="press" bindtap="goWatchlist">
       <view class="mod-glow watch-glow"></view>
-      <view class="mod-ring watch-ring"></view>
+      <view class="mod-orbit orbit-a watch-orbit"></view>
+      <view class="mod-orbit2 orbit-b watch-orbit2"></view>
       <view class="mod-dot watch-dot"></view>
       <view class="mod-row">
         <view class="mod-ic watch-ic-solid"><ui-icon name="star" size="44" color="#1a1206" /></view>

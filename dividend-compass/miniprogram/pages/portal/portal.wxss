@@ -38,45 +38,75 @@
 }
 .mod-soon { border-style: dashed; opacity: 0.6; }
 
-/* —— 卡片抽象装饰：主题色光斑 + 圆环 + 光点（纯 CSS，全端渲染一致） —— */
+/* —— 卡片轨道光效装饰：呼吸光斑 + 双轨道弧(旋转) + 发光点（纯 CSS 动画，GPU 合成） —— */
 .mod-glow {
   position: absolute;
-  right: -50rpx;
-  top: -60rpx;
-  width: 240rpx;
-  height: 240rpx;
+  right: -60rpx;
+  top: -70rpx;
+  width: 260rpx;
+  height: 260rpx;
   border-radius: 50%;
   pointer-events: none;
+  animation: glow-breath 3.6s ease-in-out infinite;
 }
-.stock-glow { background: radial-gradient(circle, rgba(76, 141, 255, 0.22), transparent 70%); }
-.gold-glow-bg { background: radial-gradient(circle, rgba(212, 169, 78, 0.24), transparent 70%); }
-.watch-glow { background: radial-gradient(circle, rgba(79, 191, 139, 0.2), transparent 70%); }
+@keyframes glow-breath {
+  0%, 100% { opacity: 0.7; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.06); }
+}
+.stock-glow { background: radial-gradient(circle, rgba(76, 141, 255, 0.28), transparent 68%); }
+.gold-glow-bg { background: radial-gradient(circle, rgba(212, 169, 78, 0.3), transparent 68%); }
+.watch-glow { background: radial-gradient(circle, rgba(79, 191, 139, 0.26), transparent 68%); }
 
-.mod-ring {
+/* 外轨道弧：270° 弧线，缓慢旋转（缺口旋转产生轨道运动感） */
+.mod-orbit {
   position: absolute;
-  right: 36rpx;
-  top: 22rpx;
-  width: 96rpx;
-  height: 96rpx;
+  right: 16rpx;
+  top: 6rpx;
+  width: 150rpx;
+  height: 150rpx;
   border-radius: 50%;
+  border: 2rpx solid transparent;
   pointer-events: none;
+  will-change: transform;
+  animation: orb-spin 26s linear infinite;
 }
-.stock-ring { border: 1.5rpx solid rgba(120, 175, 255, 0.3); }
-.gold-ring { border: 1.5rpx solid rgba(240, 208, 138, 0.32); }
-.watch-ring { border: 1.5rpx solid rgba(127, 216, 168, 0.3); }
+@keyframes orb-spin { to { transform: rotate(360deg); } }
+.stock-orbit { border-color: rgba(120, 175, 255, 0.4) rgba(120, 175, 255, 0.4) rgba(120, 175, 255, 0.08) transparent; }
+.gold-orbit { border-color: rgba(240, 208, 138, 0.42) rgba(240, 208, 138, 0.42) rgba(240, 208, 138, 0.08) transparent; }
+.watch-orbit { border-color: rgba(127, 216, 168, 0.38) rgba(127, 216, 168, 0.38) rgba(127, 216, 168, 0.08) transparent; }
 
+/* 内轨道环：反向慢旋 */
+.mod-orbit2 {
+  position: absolute;
+  right: 52rpx;
+  top: 40rpx;
+  width: 78rpx;
+  height: 78rpx;
+  border-radius: 50%;
+  border: 1.5rpx solid transparent;
+  pointer-events: none;
+  will-change: transform;
+  animation: orb-spin-rev 38s linear infinite;
+}
+@keyframes orb-spin-rev { to { transform: rotate(-360deg); } }
+.stock-orbit2 { border-color: transparent transparent rgba(156, 193, 240, 0.4) rgba(156, 193, 240, 0.4); }
+.gold-orbit2 { border-color: transparent transparent rgba(245, 220, 166, 0.42) rgba(245, 220, 166, 0.42); }
+.watch-orbit2 { border-color: transparent transparent rgba(127, 216, 168, 0.4) rgba(127, 216, 168, 0.4); }
+
+/* 轨道上的发光点（呼吸） */
 .mod-dot {
   position: absolute;
-  right: 116rpx;
-  top: 92rpx;
-  width: 12rpx;
-  height: 12rpx;
+  right: 52rpx;
+  top: 66rpx;
+  width: 14rpx;
+  height: 14rpx;
   border-radius: 50%;
   pointer-events: none;
+  animation: glow-breath 3.6s ease-in-out infinite;
 }
-.stock-dot { background: #9fc1f0; box-shadow: 0 0 12rpx rgba(120, 175, 255, 0.8); }
-.gold-dot { background: var(--gold-hi); box-shadow: 0 0 12rpx rgba(240, 208, 138, 0.8); }
-.watch-dot { background: #7fd8a8; box-shadow: 0 0 12rpx rgba(127, 216, 168, 0.8); }
+.stock-dot { background: #9fc1f0; box-shadow: 0 0 16rpx rgba(120, 175, 255, 0.95); }
+.gold-dot { background: var(--gold-hi); box-shadow: 0 0 16rpx rgba(240, 208, 138, 0.95); }
+.watch-dot { background: #7fd8a8; box-shadow: 0 0 16rpx rgba(127, 216, 168, 0.9); }
 
 /* 我的关注：星标容器 */
 .watch-ic-solid {
