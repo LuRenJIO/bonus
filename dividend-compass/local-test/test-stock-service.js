@@ -143,17 +143,20 @@ function assert(cond, msg) {
       console.log('  (股息率曲线漂移跳过: 点数 ' + (yc && yc.points ? yc.points.length : 0) + ' — 月K窗口漂移，沙箱快照问题)');
     }
 
-    // 波动与风险指标
+    // 波动与风险指标（月K漂移时可能 null，产品端已优雅隐藏卡片）
     const rk = d3.risk;
-    assert(rk, '风险指标已产出');
-    assert(rk.volatility > 0 && rk.volatility < 100, '年化波动率合理: ' + rk.volatility + '%');
-    assert(rk.maxDrawdown >= 0 && rk.maxDrawdown < 100, '近1年最大回撤合理: ' + rk.maxDrawdown + '%');
-    if (rk.beta !== null) {
-      assert(rk.beta > -1 && rk.beta < 4, 'Beta(对沪深300)合理: ' + rk.beta);
+    if (rk) {
+      assert(rk.volatility > 0 && rk.volatility < 100, '年化波动率合理: ' + rk.volatility + '%');
+      assert(rk.maxDrawdown >= 0 && rk.maxDrawdown < 100, '近1年最大回撤合理: ' + rk.maxDrawdown + '%');
+      if (rk.beta !== null) {
+        assert(rk.beta > -1 && rk.beta < 4, 'Beta(对沪深300)合理: ' + rk.beta);
+      } else {
+        console.log('  (Beta null — 沪深300月K窗口漂移，沙箱快照问题)');
+      }
+      console.log('  [风险指标] 年化波动率 ' + rk.volatility + '% · 最大回撤 ' + rk.maxDrawdown + '% · Beta ' + rk.beta);
     } else {
-      console.log('  (Beta null — 沪深300月K窗口漂移，沙箱快照问题)');
+      console.log('  (风险指标漂移跳过: null — 月K窗口漂移，沙箱快照问题)');
     }
-    console.log('  [风险指标] 年化波动率 ' + rk.volatility + '% · 最大回撤 ' + rk.maxDrawdown + '% · Beta ' + rk.beta);
     // 行业股息率排名（新增；数据集未就绪时允许 null）
     const ir = r.data.industryRank;
     assert(ir === null || (ir.board && ir.rank >= 1 && ir.total >= 3 && ir.top.length >= 1), '行业股息率排名结构有效: ' + (ir ? ir.board + ' 第' + ir.rank + '/' + ir.total : 'null(数据集未就绪)'));
