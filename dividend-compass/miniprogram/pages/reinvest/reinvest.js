@@ -8,17 +8,23 @@ Page({
     market: '',
     capital: '100000',
     years: 5,
+    startDate: '',      // 买入回放起点（空=按年限自动）
+    today: '',
     loading: true,
     error: '',
     d: null,
     lines: null,        // 归一化双线坐标
+    bdRows: null,       // 三层收益拆解行
   },
 
   onLoad(options) {
+    const now = new Date();
+    const fmt = (dt) => dt.getFullYear() + '-' + String(dt.getMonth() + 1).padStart(2, '0') + '-' + String(dt.getDate()).padStart(2, '0');
     this.setData({
       code: options.code || '',
       name: decodeURIComponent(options.name || ''),
       market: options.market || '',
+      today: fmt(now),
     });
     if (this.data.name) wx.setNavigationBarTitle({ title: this.data.name + ' · 再投模拟' });
     this.loadSim();
@@ -34,6 +40,7 @@ Page({
       const d = await util.callService('reinvest', {
         code: this.data.code, market: this.data.market,
         years: this.data.years, capital: Number(this.data.capital) || 100000,
+        startDate: this.data.startDate || '',
       });
       // 结论文案在 JS 侧拼装（WXML 表达式不支持函数调用）
       let conclusion;
@@ -45,10 +52,37 @@ Page({
         conclusion = '两策略收益相同';
       }
       d.conclusion = conclusion;
-      this.setData({ loading: false, error: '', d }, () => this.drawChart());
+      // 三层收益拆解行（宽度/颜色/文本全部 JS 预算）
+      let bdRows = null;
+      if (d.breakdown) {
+        const defs = [
+          { label: '价差收益', v: d.breakdown.price },
+          { label: '现金分红（不再投）', v: d.breakdown.dividend },
+          { label: '分红再投增益', v: d.breakdown.reinvestGain },
+        ];
+        const maxAbs = Math.max.apply(null, defs.map((x) => Math.abs(x.v)).concat([1]));
+        bdRows = defs.map((x) => ({
+          label: x.label,
+          valText: (x.v >= 0 ? '+' : '') + x.v.toLocaleString('en-US'),
+          pct: Math.max(3, Math.round((Math.abs(x.v) / maxAbs) * 100)),
+          cls: x.v >= 0 ? 'up' : 'dn',
+        }));
+      }
+      this.setData({ loading: false, error: '', d, bdRows }, () => this.drawChart());
     } catch (e) {
       this.setData({ loading: false, error: e.message || '加载失败' });
     }
+  },
+
+  onStartDate(e) {
+    this.setData({ startDate: e.detail.value });
+    this.loadSim();
+  },
+
+  onClearStartDate() {
+    if (!this.data.startDate) return;
+    this.setData({ startDate: '' });
+    this.loadSim();
   },
 
   onCapitalInput(e) { this.setData({ capital: e.detail.value }); },

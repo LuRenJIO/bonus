@@ -62,6 +62,29 @@ Page({
       });
       if (d.name) wx.setNavigationBarTitle({ title: d.name });
       const ld = this.buildLadderData(d);
+      // 分红涨薪史：年度每股分红（由近到远6年 → 升序）+ 连续增长年数徽章
+      const annualAsc = (d.dividend.annual || []).slice().reverse();
+      let gYears = 0;
+      for (let i = annualAsc.length - 1; i > 0; i--) {
+        if (annualAsc[i].perShare > annualAsc[i - 1].perShare) gYears++;
+        else break;
+      }
+      const gMax = annualAsc.length ? Math.max.apply(null, annualAsc.map((a) => a.perShare)) : 1;
+      const growth = annualAsc.length >= 2 ? {
+        badge: gYears >= 5 ? '🏆 连续' + gYears + '年增长 · 股息贵族' : gYears >= 3 ? '📈 连续' + gYears + '年增长 · 增长稳定' : '',
+        years: annualAsc.map((a, i) => {
+          const prev = i > 0 ? annualAsc[i - 1].perShare : null;
+          const yoy = prev ? (a.perShare / prev - 1) * 100 : null;
+          return {
+            year: a.year,
+            valText: a.perShare >= 10 ? a.perShare.toFixed(1) : a.perShare.toFixed(2),
+            h: Math.max(10, Math.round((a.perShare / gMax) * 110)),
+            hot: i === annualAsc.length - 1,
+            yoyText: yoy === null ? '' : (yoy >= 0 ? '↑' + yoy.toFixed(0) + '%' : '↓' + Math.abs(yoy).toFixed(0) + '%'),
+            yoyCls: yoy === null ? '' : (yoy >= 0 ? 'up' : 'dn'),
+          };
+        }),
+      } : null;
       this.setData({
         d: d,
         loading: false,
@@ -69,6 +92,7 @@ Page({
         ladder: ld ? ld.ladder : null,
         ladderInput: ld ? ld.input : '',
         ladderDefault: ld ? ld.def : null,
+        growth,
       }, () => {
         util.addRecent({ code: this.data.code, name: d.name || this.data.name, market: this.data.market });
         if (d.yieldCurve && d.yieldCurve.points && d.yieldCurve.points.length >= 2) {

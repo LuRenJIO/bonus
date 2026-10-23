@@ -427,6 +427,16 @@ function assert(cond, msg) {
     // 3年窗口
     const r3 = await fn.main({ action: 'reinvest', code: '600519', market: 'SH', years: 3, capital: 50000 });
     assert(r3.success && r3.data.years === 3, '3年窗口参数生效');
+    // 买入回放：指定起点日 + 三层拆解自洽（三层之和 = 再投总收益）
+    const r4 = await fn.main({ action: 'reinvest', code: '600900', market: 'SH', years: 3, capital: 100000, startDate: '2022-04-27' });
+    assert(r4.success, 'startDate 回放成功');
+    const d4 = r4.data;
+    assert(d4.startDate >= '2022-04-27' && d4.startDate <= '2022-05-10', '起点日生效: ' + d4.startDate);
+    assert(d4.breakdown && isFinite(d4.breakdown.price) && isFinite(d4.breakdown.dividend), 'breakdown 已产出');
+    const bSum = d4.breakdown.price + d4.breakdown.dividend + d4.breakdown.reinvestGain;
+    assert(Math.abs(bSum - d4.breakdown.total) <= 2, '三层之和=总收益: ' + bSum + ' vs ' + d4.breakdown.total);
+    assert(Math.abs(d4.breakdown.total - (d4.valueReinvest - d4.capital)) <= 2, '总收益与市值自洽');
+    console.log('  [回放] 起点' + d4.startDate + ' 价差' + d4.breakdown.price + ' + 分红' + d4.breakdown.dividend + ' + 再投增益' + d4.breakdown.reinvestGain + ' = ' + d4.breakdown.total + '元');
     pass++;
   } catch (e) { console.log('  ✗ ' + e.message); fail++; }
 

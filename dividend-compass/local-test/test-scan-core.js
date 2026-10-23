@@ -12,6 +12,21 @@ function assert(cond, msg) {
 
 console.log('========== scan-core 单测 ==========');
 
+// ---- classifySignal / signalPrefix（黄金坑信号） ----
+console.log('\n---- 黄金坑信号分类 ----');
+{
+  const fin = (rows) => rows.map((r) => ({ reportDate: r[0], parentNetProfit: r[1] }));
+  assert(core.classifySignal(null) === 'plain', '无财务 → plain');
+  assert(core.classifySignal([]) === 'plain', '空数组 → plain');
+  assert(core.classifySignal(fin([['2026-09-30', 300], ['2025-09-30', 260]])) === 'gold', '净利增长 → gold');
+  assert(core.classifySignal(fin([['2026-09-30', 200], ['2025-09-30', 260]])) === 'warn', '净利下滑 → warn');
+  assert(core.classifySignal(fin([['2026-09-30', 300], ['2025-09-30', -50]])) === 'plain', '上年亏损 → plain（同比无意义）');
+  assert(core.classifySignal(fin([['2026-09-30', 300]])) === 'plain', '缺上年同期 → plain');
+  assert(core.signalPrefix('gold') === '🟡黄金坑·', 'gold 前缀');
+  assert(core.signalPrefix('warn') === '🔴警惕·', 'warn 前缀');
+  assert(core.signalPrefix('plain') === '', 'plain 无前缀');
+}
+
 // ---- matchAlerts ----
 const rules = [
   { code: '600519', name: '贵州茅台', threshold: 4.0 },

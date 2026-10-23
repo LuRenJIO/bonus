@@ -101,4 +101,25 @@ function localWhenStr(d) {
     String(dt.getHours()).padStart(2, '0') + ':' + String(dt.getMinutes()).padStart(2, '0');
 }
 
-module.exports = { fmtPct, matchAlerts, clip20, buildRemindLines, buildExDivLines, buildMessageData, localDateStr, localWhenStr };
+/**
+ * 黄金坑信号分类（与 stock-service/lib/signal.js 同逻辑）：触发高股息时按净利同比分成色
+ * @returns {'gold'|'warn'|'plain'}
+ */
+function classifySignal(financeReports) {
+  if (!Array.isArray(financeReports) || !financeReports.length) return 'plain';
+  const latest = financeReports[0];
+  if (!latest || !latest.reportDate || !isFinite(latest.parentNetProfit)) return 'plain';
+  const prevKey = String(Number(latest.reportDate.slice(0, 4)) - 1) + latest.reportDate.slice(4);
+  const prev = financeReports.find((f) => f.reportDate === prevKey);
+  if (!prev || !isFinite(prev.parentNetProfit) || prev.parentNetProfit <= 0) return 'plain';
+  return latest.parentNetProfit >= prev.parentNetProfit ? 'gold' : 'warn';
+}
+
+/** 信号 → 提醒文案前缀 */
+function signalPrefix(signal) {
+  if (signal === 'gold') return '🟡黄金坑·';
+  if (signal === 'warn') return '🔴警惕·';
+  return '';
+}
+
+module.exports = { fmtPct, matchAlerts, clip20, buildRemindLines, buildExDivLines, buildMessageData, localDateStr, localWhenStr, classifySignal, signalPrefix };

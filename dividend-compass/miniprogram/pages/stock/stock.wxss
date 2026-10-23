@@ -381,6 +381,42 @@
 .ir-top-name { color: var(--text-main); }
 .ir-top-yld { font-weight: 600; }
 
+/* ================= 分红涨薪史 ================= */
+.growth-badge {
+  font-size: 20rpx;
+  color: #e8b95f;
+  background: rgba(212, 169, 78, 0.14);
+  border-radius: var(--radius-full, 999rpx);
+  padding: 4rpx 16rpx;
+  font-weight: 600;
+}
+.gh-chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 6rpx;
+  padding: 8rpx 0 0;
+}
+.gh-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+}
+.gh-val { font-size: 19rpx; color: var(--text-sub); margin-bottom: 6rpx; }
+.gh-bar {
+  width: 64%;
+  background: linear-gradient(180deg, rgba(212, 169, 78, 0.75), rgba(212, 169, 78, 0.3));
+  border-radius: 6rpx 6rpx 0 0;
+}
+.gh-bar.hot {
+  background: linear-gradient(180deg, #e8b95f, rgba(212, 169, 78, 0.45));
+}
+.gh-yoy { font-size: 18rpx; margin-top: 6rpx; }
+.gh-yoy.up { color: #f04b5a; }
+.gh-yoy.dn { color: #00b578; }
+.gh-yr { font-size: 18rpx; color: var(--text-dim); margin-top: 4rpx; }
+
 /* ================= 波动与风险 ================= */
 .risk-grid { display: flex; }
 .risk-item {

@@ -13,6 +13,7 @@
 const ds = require('./lib/dataSource');
 const div = require('./lib/dividend');
 const pred = require('./lib/prediction');
+const signal = require('./lib/signal');
 const { healthCheck } = require('./lib/health');
 const { calcRiskMetrics } = require('./lib/risk');
 
@@ -283,10 +284,29 @@ async function handleCheckAlerts(event) {
       ttmYield,
       threshold: r.threshold,
       triggered: ttmYield !== null && ttmYield >= r.threshold,
+      signal: 'plain',
     };
   });
+  // 黄金坑信号：触发高股息的股票按净利润同比分类（gold/warn/plain），财务 12h 缓存
+  const triggeredList = out.filter((o) => o.triggered);
+  await Promise.all(triggeredList.map(async (o) => {
+    try {
+      const fin = await getFinanceCached(o.code, 0);
+      o.signal = signal.classifySignal(fin);
+    } catch (e) { o.signal = 'plain'; }
+  }));
   cacheSet(ck, out);
   return ok(out);
+}
+
+/** 财务数据 12h 缓存（黄金坑信号/体检共用，减少重复抓取） */
+async function getFinanceCached(code, type) {
+  const ck2 = 'fin:' + code + ':' + type;
+  const cached = cacheGet(ck2, 12 * 3600 * 1000);
+  if (cached) return cached;
+  const list = await ds.getFinanceMain(code, type);
+  cacheSet(ck2, list);
+  return list;
 }
 
 /* ---------------- 指数/个股走势（分时/历史） ---------------- */
@@ -520,19 +540,36 @@ async function handleReinvest(event) {
   let capital = Number(event.capital);
   if (!isNum(capital) || capital <= 0) capital = 100000;
 
-  const ck = 'ri:' + code + ':' + years;
+  // 买入回放：可选起点日（YYYY-MM-DD），给定后从该日起模拟
+  let startReq = String(event.startDate || '').trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(startReq) || isNaN(new Date(startReq + 'T00:00:00').getTime())) startReq = '';
+
+  const ck = 'ri:' + code + ':' + years + ':' + (startReq || 'auto');
   const cached = cacheGet(ck, 12 * 3600 * 1000);
   if (cached) return ok(cached);
 
+  // 拉取量：指定起点时按跨度估算，否则按年限
+  let n = years * 250 + 20;
+  if (startReq) {
+    const days = Math.max(30, Math.round((Date.now() - new Date(startReq + 'T00:00:00').getTime()) / 86400000));
+    n = Math.min(1300, Math.ceil(days * 5 / 7) + 20);
+  }
+
   const [daily, dividendRaw] = await Promise.all([
-    ds.getDailyCloses(code, market, years * 250 + 20).catch(() => null),
+    ds.getDailyCloses(code, market, n).catch(() => null),
     ds.getDividendHistory(code).catch(() => []),
   ]);
   if (!daily || daily.length < 120) return fail('历史价格数据不足');
 
-  // 窗口：从首个交易日开始，截取约 years 年
-  const endIdx = Math.min(daily.length - 1, years * 250);
-  const window = daily.slice(0, endIdx + 1);
+  // 窗口：起点 = 指定日（早于数据则取首日；过近则至少保留60个交易日），截取约 years 年
+  let winStartIdx = 0;
+  if (startReq) {
+    const idx = daily.findIndex((d) => d.date >= startReq);
+    winStartIdx = idx < 0 ? 0 : idx;
+    if (winStartIdx > daily.length - 60) winStartIdx = Math.max(0, daily.length - 60);
+  }
+  const endIdx = Math.min(daily.length - 1, winStartIdx + years * 250);
+  const window = daily.slice(winStartIdx, endIdx + 1);
   const startDate = window[0].date;
   const endDate = window[window.length - 1].date;
 
@@ -575,9 +612,15 @@ async function handleReinvest(event) {
   const priceN = window[window.length - 1].close;
   const valueR = sharesR * priceN;
   const valueP = sharesP * priceN + cashP;
+  // 三层收益拆解（之和 = 再投策略总收益，自洽可验）：
+  //   价差 = 期末股价×初始股数 − 本金；分红 = 不再投累计现金；再投增益 = 再投买入股份的期末价值 − 再投投入的现金
+  const bPrice = priceN * sharesP - capital;
+  const bDividend = cashP;
+  const bReinvestGain = sharesR * priceN - sharesP * priceN - cashP;
   const result = {
     code, market,
     startDate, endDate, years,
+    startDateReq: startReq || null,
     price0, priceN,
     capital: +capital.toFixed(0),
     sharesStart: +(capital / price0).toFixed(2),
@@ -588,6 +631,12 @@ async function handleReinvest(event) {
     dividendCount: divEvents.length,
     gainR: +((valueR / capital - 1) * 100).toFixed(1),
     gainP: +((valueP / capital - 1) * 100).toFixed(1),
+    breakdown: {
+      price: +bPrice.toFixed(0),
+      dividend: +bDividend.toFixed(0),
+      reinvestGain: +bReinvestGain.toFixed(0),
+      total: +(valueR - capital).toFixed(0),
+    },
     series,
   };
   cacheSet(ck, result);

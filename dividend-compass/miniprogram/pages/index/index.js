@@ -193,7 +193,10 @@ Page({
       })).filter((r) => r.triggered);
       this.setData({
         alertHits: hits,
-        alertHitsText: hits.slice(0, 2).map((h) => h.name + ' ' + h.ttmYield + '%').join('、') + (hits.length > 2 ? ' 等' : ''),
+        alertHitsText: hits.slice(0, 2).map((h) => {
+          const emoji = h.signal === 'gold' ? '🟡' : h.signal === 'warn' ? '🔴' : '';
+          return emoji + h.name + ' ' + h.ttmYield + '%';
+        }).join('、') + (hits.length > 2 ? ' 等' : ''),
       });
     } catch (e) { /* 静默 */ }
   },

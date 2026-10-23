@@ -89,6 +89,17 @@ function ttmPerShare(rawList) {
   return sum;
 }
 
+/** 东财 F10 财务主要指标（黄金坑信号用：最新报告期归母净利 + 上年同期） */
+async function getFinanceMain(code) {
+  const f10 = (/^(6|9)/.test(code) ? 'SH' : 'SZ') + code;
+  const url = 'https://emweb.securities.eastmoney.com/PC_HSF10/NewFinanceAnalysis/ZYZBAjaxNew?type=0&code=' + f10;
+  const j = JSON.parse(await httpGet(url, { Referer: 'https://emweb.securities.eastmoney.com/' }));
+  return ((j && j.data) || []).map((r) => ({
+    reportDate: (r.REPORT_DATE || '').slice(0, 10),
+    parentNetProfit: parseFloat(r.PARENTNETPROFIT),
+  }));
+}
+
 async function safeList(col) {
   try {
     const res = await db.collection(col).limit(1000).get();
@@ -166,6 +177,17 @@ async function runScan() {
         const hits = core.matchAlerts(rules, quotes, ttmMap);
         if (hits.length) {
           summary.alert_hits += hits.length;
+          // 黄金坑信号：按净利同比分成色，名称加前缀（本次运行内缓存财务）
+          const finCache = {};
+          for (const h of hits) {
+            try {
+              if (finCache[h.code] === undefined) {
+                finCache[h.code] = await getFinanceMain(h.code).catch(() => null);
+              }
+              h.signal = core.classifySignal(finCache[h.code]);
+            } catch (e) { h.signal = 'plain'; }
+            h.name = core.signalPrefix(h.signal) + h.name;
+          }
           const r = await send(uid, cfg.TEMPLATE_ID_REMIND,
             core.buildRemindLines(hits) || '自选股息率机会', whenStr, cfg.FIELD_MAP.REMIND);
           if (r.sent) summary.sent_alert++;

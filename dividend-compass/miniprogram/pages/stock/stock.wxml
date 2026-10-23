@@ -322,6 +322,23 @@
       </view>
     </view>
 
+    <!-- ============ 分红涨薪史 ============ -->
+    <view class="card" wx:if="{{growth}}">
+      <view class="card-title">
+        <text>分红涨薪史</text>
+        <text class="growth-badge" wx:if="{{growth.badge}}">{{growth.badge}}</text>
+      </view>
+      <view class="gh-chart">
+        <view class="gh-col" wx:for="{{growth.years}}" wx:key="year">
+          <text class="gh-val num">{{item.valText}}</text>
+          <view class="gh-bar {{item.hot ? 'hot' : ''}}" style="height: {{item.h}}rpx"></view>
+          <text class="gh-yoy {{item.yoyCls}}">{{item.yoyText}}</text>
+          <text class="gh-yr num">{{item.year}}</text>
+        </view>
+      </view>
+      <view class="price-note">每股分红（元/股，按报告期归属年）· 连续增长≥5年认证"股息贵族" · 大额特别分红可能影响连续性判断</view>
+    </view>
+
     <!-- ============ 分红历史 ============ -->
     <view class="card" wx:if="{{d.dividend.annual.length}}">
       <view class="card-title">
