@@ -72,10 +72,10 @@
     <!-- 我的关注 -->
     <view class="mod mod-watch" hover-class="press" bindtap="goWatchlist">
       <view class="deco-stars">
+        <view class="star-outline"></view>
         <view class="star st1"></view>
         <view class="star st2"></view>
         <view class="star st3"></view>
-        <view class="star st4"></view>
       </view>
       <view class="mod-row">
         <view class="mod-ic watch-ic-solid"><ui-icon name="star" size="44" color="#1a1206" /></view>

@@ -55,14 +55,16 @@ Page({
           }).catch(() => []),
         ]);
         const enrichedRes = util.enrichGoldFavorites(list, gold);
-        const enrichedBase = enrichedRes.list;
         const qMap = {};
         (quotes || []).forEach((q) => { qMap[q.code] = q; });
         this.setData({
-          favList: enrichedBase.map((it) => Object.assign({}, it, {
-            price: it.isGold ? it.price : (qMap[it.code] ? qMap[it.code].price : null),
-            changePercent: it.isGold ? it.changePercent : (qMap[it.code] ? qMap[it.code].changePercent : null),
-          })),
+          // 贵金属现货（GOLD）条目仅在「我的关注」展示，拾息红利自选列表不显示
+          favList: enrichedRes.list
+            .filter((it) => !it.isGold)
+            .map((it) => Object.assign({}, it, {
+              price: qMap[it.code] ? qMap[it.code].price : null,
+              changePercent: qMap[it.code] ? qMap[it.code].changePercent : null,
+            })),
         });
       } catch (e) { /* 行情失败不影响列表展示 */ }
     }

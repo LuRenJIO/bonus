@@ -144,8 +144,25 @@
 .ispark.sp1 { right: 12rpx; top: 14rpx; }
 .ispark.sp2 { right: 168rpx; bottom: 34rpx; opacity: 0.65; }
 
-/* 我的关注：绿光星野 */
+/* 我的关注：绿光星野 + 空心描边大五角星 */
 .deco-stars { position: absolute; inset: 0; pointer-events: none; }
+.star-outline {
+  position: absolute;
+  right: 26rpx;
+  top: 16rpx;
+  width: 96rpx;
+  height: 92rpx;
+  clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
+  background: rgba(127, 216, 168, 0.65);
+  filter: drop-shadow(0 0 10rpx rgba(127, 216, 168, 0.45));
+}
+.star-outline::after {
+  content: "";
+  position: absolute;
+  left: 9rpx; right: 9rpx; top: 8rpx; bottom: 8rpx;
+  clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
+  background: #101a15;
+}
 .star {
   position: absolute;
   border-radius: 50%;

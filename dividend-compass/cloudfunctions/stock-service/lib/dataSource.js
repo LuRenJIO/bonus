@@ -97,10 +97,18 @@ async function searchStock(keyword) {
 
 /* ---------------- 2. 实时行情（push2 → 腾讯 → 新浪 三级回退） ---------------- */
 
-function buildSecid(code) {
-  // 沪市：6开头(主板) 68(科创) 9(B股)；北交所：4/8开头(smart忽略)；默认深市
-  if (/^(6|9)/.test(code) || code.startsWith('68')) return '1.' + code;
-  return '0.' + code;
+/** 市场推断：显式 market 优先；否则按代码段规则（含沪市基金 5/51/56/58、深市基金 15/16） */
+function marketOf(code, market) {
+  if (market) return market;
+  const c = String(code);
+  if (/^(6|9|5|11|13)/.test(c)) return 'SH';   // 沪股票/沪ETF(51,56,58)/沪封基(5)/可转债(11,13)
+  if (/^(0|3|12|15|16|18)/.test(c)) return 'SZ'; // 深股票/深ETF(15,16)/深转债(12)
+  return 'SH';
+}
+
+function buildSecid(code, market) {
+  const mkt = marketOf(code, market);
+  return (mkt === 'SH' ? '1.' : '0.') + code;
 }
 
 async function quoteFromPush2(secid) {
@@ -199,11 +207,11 @@ async function quoteFromSina(code, market) {
 }
 
 async function getQuote(code, market) {
-  const secid = buildSecid(code);
+  const mkt = marketOf(code, market);
   const tryList = [
-    () => quoteFromPush2(secid),
-    () => quoteFromTencent(code, market || (/^(6|9)/.test(code) ? 'SH' : 'SZ')),
-    () => quoteFromSina(code, market || (/^(6|9)/.test(code) ? 'SH' : 'SZ')),
+    () => quoteFromPush2(buildSecid(code, mkt)),
+    () => quoteFromTencent(code, mkt),
+    () => quoteFromSina(code, mkt),
   ];
   for (const fn of tryList) {
     try {
@@ -214,12 +222,14 @@ async function getQuote(code, market) {
   throw new Error('行情获取失败：三个数据源均不可用 ' + code);
 }
 
-/** 批量行情（腾讯，自选列表用）：list: [{code, market}]，返回 [{code, price, change, changePercent}] */
+/** 批量行情（腾讯，自选列表用）：list: [{code, market}]，返回 [{code, price, change, changePercent}]；GOLD 虚拟条目跳过（由 goldBrief 填充） */
 async function quoteBatch(list) {
-  const items = (list || []).slice(0, 50).map((it) => {
-    const mkt = it.market || (/^(6|9)/.test(it.code) ? 'SH' : 'SZ');
-    return (mkt === 'SH' ? 'sh' : 'sz') + it.code;
-  });
+  const items = (list || []).slice(0, 50)
+    .filter((it) => it.market !== 'GOLD')
+    .map((it) => {
+      const mkt = marketOf(it.code, it.market);
+      return (mkt === 'SH' ? 'sh' : 'sz') + it.code;
+    });
   if (!items.length) return [];
   const text = await httpGet('https://qt.gtimg.cn/q=' + items.join(','));
   const result = [];
