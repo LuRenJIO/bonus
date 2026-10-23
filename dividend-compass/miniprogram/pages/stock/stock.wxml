@@ -232,7 +232,7 @@
     </view>
 
     <!-- ============ 股息率阶梯 · 买入参考价 ============ -->
-    <view class="card" wx:if="{{d.quote.price}}">
+    <view class="card" wx:if="{{!isEtf && d.quote.price}}">
       <view class="card-title">
         <text>股息率阶梯 · 买入参考价</text>
         <text class="sub">对应股价 = 分红 ÷ 股息率</text>
