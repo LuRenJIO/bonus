@@ -1,9 +1,24 @@
-/* index.wxss —— 首页 */
+/* index.wxss —— 红利策略模块工作台 */
 
 .page {
   padding-bottom: 40rpx;
   min-height: 100vh;
 }
+
+/* ---------- 模块归属条 ---------- */
+.module-tag {
+  margin: 20rpx 24rpx 0;
+  padding: 12rpx 20rpx;
+  display: flex;
+  align-items: center;
+  gap: 14rpx;
+  background: linear-gradient(135deg, #101820, #0a0d12);
+  border: 1rpx solid #2a3442;
+  border-radius: var(--radius-md);
+}
+.mt-ic { display: flex; align-items: center; }
+.mt-name { font-size: 23rpx; font-weight: 600; color: #9fc1f0; flex: 1; }
+.mt-cur { font-size: 19rpx; color: var(--text-dim); }
 
 /* ---------- 搜索框 ---------- */
 .search-bar {

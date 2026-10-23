@@ -1,0 +1,8 @@
+{
+  "navigationBarTitleText": "拾息记 · 工作台",
+  "backgroundColor": "#050608",
+  "usingComponents": {
+    "ui-icon": "/components/ui-icon/ui-icon",
+    "module-switcher": "/components/module-switcher/module-switcher"
+  }
+}

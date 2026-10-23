@@ -1,0 +1,72 @@
+<!--portal.wxml 模块门户：策略模块调度中心（黑金终端风）-->
+<view class="page">
+
+  <view class="pt-head">
+    <view class="pt-k">SHIXIJI · WORKBENCH</view>
+    <view class="pt-t">选择模块<text class="pt-dot"> ·</text></view>
+    <view class="pt-s">每个模块是一套完整的策略工作台</view>
+  </view>
+
+  <view wx:if="{{loading}}" class="pt-skeleton">
+    <view class="skeleton pt-sk"></view>
+    <view class="skeleton pt-sk"></view>
+  </view>
+
+  <view wx:elif="{{error}}" class="empty-box">
+    <view>模块摘要加载失败</view>
+    <view class="pt-err">{{error}}</view>
+    <view class="pt-retry" bindtap="load">重试</view>
+  </view>
+
+  <block wx:else>
+    <view class="pt-label">核心模块</view>
+
+    <!-- 低波红利策略 -->
+    <view class="mod mod-stock" hover-class="press" bindtap="goStrategy">
+      <view class="mod-row">
+        <view class="mod-ic stock-ic"><ui-icon name="chart" size="44" color="#9fc1f0" /></view>
+        <view class="mod-info">
+          <view class="mod-name">低波红利策略</view>
+          <view class="mod-desc">行情 · 筛选 · 日历 · 记账 · 提醒</view>
+        </view>
+        <view class="mod-arr">›</view>
+      </view>
+      <view class="mod-foot" wx:if="{{stockSummary}}">
+        <text class="mchip">今日除息 {{stockSummary.exTodayCount}} 只</text>
+        <text class="mchip">派现 {{stockSummary.exCash}}</text>
+        <text class="mchip g">中证红利 {{stockSummary.csiText}}</text>
+      </view>
+    </view>
+
+    <!-- 黄金观察 -->
+    <view class="mod mod-gold" hover-class="press" bindtap="goGold">
+      <view class="mod-row">
+        <view class="mod-ic"><ui-icon name="gold" size="44" /></view>
+        <view class="mod-info">
+          <view class="mod-name">黄金观察</view>
+          <view class="mod-desc">金价 · 走势 · ETF 配置</view>
+        </view>
+        <view class="mod-arr">›</view>
+      </view>
+      <view class="mod-foot" wx:if="{{goldSummary}}">
+        <text class="mchip g">上海金 {{goldSummary.price}} 元/克</text>
+        <text class="mchip {{goldSummary.chgCls}}">{{goldSummary.chgPct}}</text>
+      </view>
+    </view>
+
+    <view class="pt-label">扩展模块</view>
+    <view class="mod mod-soon">
+      <view class="mod-row">
+        <view class="mod-ic soon-ic"><ui-icon name="plus" size="34" color="#55606c" /></view>
+        <view class="mod-info">
+          <view class="mod-name soon-name">可转债 · REITs · 美股红利</view>
+          <view class="mod-desc">新策略模块预留槽位，敬请期待</view>
+        </view>
+      </view>
+    </view>
+
+    <view class="pt-tip">长按右下角 ⇄ 可在任意模块页之间快速切换</view>
+  </block>
+
+  <module-switcher current="" />
+</view>

@@ -1,5 +1,6 @@
 {
   "pages": [
+    "pages/portal/portal",
     "pages/index/index",
     "pages/stock/stock",
     "pages/calendar/calendar",

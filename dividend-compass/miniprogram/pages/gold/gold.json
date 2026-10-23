@@ -2,5 +2,8 @@
   "navigationBarTitleText": "黄金观察",
   "backgroundColor": "#0e1116",
   "enablePullDownRefresh": true,
-  "backgroundTextStyle": "light"
+  "backgroundTextStyle": "light",
+  "usingComponents": {
+    "module-switcher": "/components/module-switcher/module-switcher"
+  }
 }

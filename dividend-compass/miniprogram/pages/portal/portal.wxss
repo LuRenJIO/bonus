@@ -1,0 +1,103 @@
+/* portal.wxss 模块门户（黑金终端风） */
+.page {
+  min-height: 100vh;
+  background: #050608;
+  background-image: linear-gradient(rgba(27, 34, 44, 0.5) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(27, 34, 44, 0.5) 1px, transparent 1px);
+  background-size: 48rpx 48rpx;
+  padding-bottom: 140rpx;
+}
+
+.pt-head { padding: 36rpx 32rpx 10rpx; }
+.pt-k { font-size: 20rpx; color: var(--text-dim); letter-spacing: 4rpx; }
+.pt-t { font-size: 44rpx; font-weight: 700; color: var(--text); margin-top: 6rpx; }
+.pt-dot { color: var(--gold-hi); }
+.pt-s { font-size: 23rpx; color: var(--text-sub); margin-top: 8rpx; }
+
+.pt-label {
+  font-size: 21rpx;
+  color: var(--text-dim);
+  letter-spacing: 3rpx;
+  padding: 24rpx 32rpx 12rpx;
+}
+
+/* 模块卡 */
+.mod {
+  margin: 0 24rpx 20rpx;
+  border-radius: var(--radius-lg);
+  border: 1rpx solid var(--lineh, #2a3442);
+  padding: 26rpx;
+  transition: transform 0.12s ease;
+}
+.mod-stock { background: linear-gradient(135deg, #101820, #0a0d12); }
+.mod-gold {
+  background: linear-gradient(135deg, #221b0e, #0e0b06);
+  border-color: #3d3018;
+}
+.mod-soon { border-style: dashed; opacity: 0.6; }
+
+.mod-row { display: flex; align-items: center; gap: 22rpx; }
+.mod-ic {
+  width: 84rpx;
+  height: 84rpx;
+  border-radius: 22rpx;
+  border: 1rpx solid rgba(212, 169, 78, 0.35);
+  background: rgba(212, 169, 78, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.stock-ic {
+  border-color: #3a4a5e;
+  background: rgba(76, 141, 255, 0.08);
+}
+.soon-ic { border-style: dashed; background: transparent; }
+
+.mod-info { flex: 1; }
+.mod-name { font-size: 30rpx; font-weight: 600; color: var(--text); }
+.soon-name { color: var(--text-sub); }
+.mod-desc { font-size: 21rpx; color: var(--text-dim); margin-top: 6rpx; line-height: 1.5; }
+.mod-arr { color: var(--text-dim); font-size: 34rpx; }
+
+.mod-foot {
+  display: flex;
+  gap: 12rpx;
+  margin-top: 18rpx;
+  padding-top: 16rpx;
+  border-top: 1rpx solid rgba(27, 34, 44, 0.8);
+  flex-wrap: wrap;
+}
+.mchip {
+  font-size: 19rpx;
+  color: var(--text-sub);
+  border: 1rpx solid var(--lineh, #2a3442);
+  border-radius: 6rpx;
+  padding: 4rpx 12rpx;
+}
+.mchip.g { color: var(--gold); border-color: rgba(212, 169, 78, 0.3); }
+.mchip.up { color: var(--up); border-color: rgba(240, 75, 90, 0.3); }
+.mchip.dn { color: var(--down); border-color: rgba(0, 181, 120, 0.3); }
+
+.pt-tip {
+  padding: 10rpx 32rpx;
+  font-size: 20rpx;
+  color: var(--text-dim);
+  text-align: center;
+  line-height: 1.6;
+}
+.pt-err { color: var(--up); font-size: 21rpx; margin-top: 10rpx; }
+.pt-retry {
+  margin: 20rpx auto 0;
+  width: 180rpx;
+  height: 64rpx;
+  line-height: 64rpx;
+  text-align: center;
+  border: 1rpx solid var(--border);
+  border-radius: 32rpx;
+  font-size: 24rpx;
+  color: var(--text-sub);
+}
+
+.pt-skeleton { padding: 10rpx 24rpx; }
+.pt-sk { height: 180rpx; margin-bottom: 20rpx; }

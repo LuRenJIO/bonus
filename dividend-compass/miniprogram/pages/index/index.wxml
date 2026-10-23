@@ -1,5 +1,12 @@
-<!--index.wxml 首页：搜索 / 自选 / 最近浏览-->
+<!--index.wxml 红利策略模块工作台：搜索 / 自选 / 最近浏览-->
 <view class="page">
+
+  <!-- 模块归属条 -->
+  <view class="module-tag">
+    <view class="mt-ic"><ui-icon name="chart" size="26" /></view>
+    <text class="mt-name">低波红利策略</text>
+    <text class="mt-cur">当前模块</text>
+  </view>
 
   <!-- 搜索框 -->
   <view class="search-bar">
@@ -195,4 +202,6 @@
       <button class="feedback-btn" open-type="feedback" plain>意见反馈</button>
     </view>
   </block>
+
+  <module-switcher current="strategy" />
 </view>

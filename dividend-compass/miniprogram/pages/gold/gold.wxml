@@ -1,5 +1,12 @@
-<!--gold.wxml 黄金观察：实时金价 + 分时/1年/3年走势（滑动查看）+ ETF 配置估算-->
+<!--gold.wxml 黄金观察模块：实时金价 + 分时/1年/3年走势（滑动查看）+ ETF 配置估算-->
 <view class="page">
+
+  <!-- 模块归属条 -->
+  <view class="module-tag gold-tag">
+    <view class="mt-ic"><ui-icon name="gold" size="26" /></view>
+    <text class="mt-name gold-name">黄金观察</text>
+    <text class="mt-cur">当前模块</text>
+  </view>
 
   <!-- 今日金价（30秒自动刷新） -->
   <view class="card" wx:if="{{spot}}">
@@ -97,4 +104,6 @@
   <view class="footer-tip">
     <view>黄金行情仅供参考，不构成投资建议；金价波动较大，配置比例应与自身风险承受能力匹配</view>
   </view>
+
+  <module-switcher current="gold" />
 </view>

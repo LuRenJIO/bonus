@@ -1,0 +1,31 @@
+<!--components/module-switcher/module-switcher.wxml-->
+<view class="ms-fab" catchtap="toggle" aria-label="切换模块">⇄</view>
+
+<view class="ms-mask" wx:if="{{open}}" catchtap="close"></view>
+<view class="ms-sheet" wx:if="{{open}}" catchtap="noop">
+  <view class="ms-head">
+    <text>切换模块</text>
+    <text class="ms-hint">2 步直达 · 无需回主页</text>
+  </view>
+  <view
+    class="ms-mod {{item.key === current ? 'cur' : ''}}"
+    wx:for="{{modules}}"
+    wx:key="key"
+    data-key="{{item.key}}"
+    data-url="{{item.url}}"
+    catchtap="onPick"
+    hover-class="press"
+  >
+    <view class="ms-mod-ic"><ui-icon name="{{item.icon}}" size="30" /></view>
+    <view class="ms-mod-info">
+      <view class="ms-mod-name">{{item.name}}</view>
+      <view class="ms-mod-desc">{{item.desc}}</view>
+    </view>
+    <text class="ms-cur" wx:if="{{item.key === current}}">当前</text>
+    <text class="ms-go" wx:else>切换 ›</text>
+  </view>
+  <view class="ms-soon">
+    <view class="ms-soon-ic"><ui-icon name="plus" size="24" color="#55606c" /></view>
+    <text>更多策略模块 · 敬请期待</text>
+  </view>
+</view>
